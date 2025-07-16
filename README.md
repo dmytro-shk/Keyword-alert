@@ -48,7 +48,12 @@ See full [Privacy Policy](#) (https://github.com/dmytro-shk/Keyword-alert/blob/m
 
 ## 📦 Installation
 
-0. Install via Google Chrome store
+#### Option 1:
+
+1. Install via Google Chrome store
+
+#### Option 2
+
 1. Clone or download this repository
 2. Go to `chrome://extensions/`
 3. Enable **Developer mode**
