@@ -1,26 +1,239 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-  <title>Keyword Alert Settings</title>
-  <style>
-    body { font-family: Arial, sans-serif; padding: 10px; width: 300px; }
-    textarea, input { width: 100%; margin-top: 5px; }
-    textarea { height: 120px; }
-    button { margin-top: 10px; width: 100%; padding: 5px; }
-    label { font-weight: bold; margin-top: 10px; display: block; }
-  </style>
-</head>
-<body>
-  <h3>Keyword Alert Settings</h3>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body {
+        width: 420px;
+        padding: 0;
+        font-family: Arial, sans-serif;
+        margin: 0;
+      }
+      .tabs {
+        display: flex;
+        background: #f0f0f0;
+        border-bottom: 1px solid #ccc;
+      }
+      .tab {
+        padding: 10px 15px;
+        cursor: pointer;
+        border: none;
+        background: #f0f0f0;
+        font-size: 14px;
+      }
+      .tab.active {
+        background: white;
+        border-bottom: 2px solid #007acc;
+        font-weight: bold;
+      }
+      .tab:hover {
+        background: #e0e0e0;
+      }
+      .tab-content {
+        padding: 15px;
+        display: none;
+      }
+      .tab-content.active {
+        display: block;
+      }
+      .form-group {
+        margin-bottom: 12px;
+      }
+      .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+      .keyword-row {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
+        gap: 8px;
+      }
+      .keyword-input {
+        padding: 4px 8px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        width: 120px;
+      }
+      .operator-select {
+        padding: 4px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        width: 60px;
+      }
+      .btn {
+        padding: 6px 12px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 12px;
+      }
+      .btn-primary {
+        background: #007acc;
+        color: white;
+        border-color: #007acc;
+      }
+      .btn-secondary {
+        background: #6c757d;
+        color: white;
+        border-color: #6c757d;
+      }
+      .btn-danger {
+        background: #dc3545;
+        color: white;
+        border-color: #dc3545;
+      }
+      .btn-success {
+        background: #28a745;
+        color: white;
+        border-color: #28a745;
+      }
+      .btn:hover {
+        opacity: 0.8;
+      }
+      .preset-item {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+        padding: 10px;
+        margin-bottom: 8px;
+      }
+      .preset-name {
+        font-weight: bold;
+        margin-bottom: 5px;
+      }
+      .preset-keywords {
+        font-family: monospace;
+        color: #495057;
+        font-size: 12px;
+      }
+      .message-item {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+        padding: 10px;
+        margin-bottom: 8px;
+      }
+      .actions {
+        margin-top: 12px;
+        display: flex;
+        gap: 8px;
+      }
+      .test-section {
+        background: #e3f2fd;
+        border: 1px solid #90caf9;
+        border-radius: 5px;
+        padding: 12px;
+        margin-top: 15px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="tabs">
+      <button class="tab active" data-tab="main-triggers">Main Triggers</button>
+      <button class="tab" data-tab="secondary-triggers">Secondary Triggers</button>
+      <button class="tab" data-tab="alerts">Alerts</button>
+    </div>
 
-  <label for="triggerInput">Trigger Phrase (must appear on page):</label>
-  <input type="text" id="triggerInput" placeholder="Work Order" />
+    <!-- Main Triggers Tab -->
+    <div id="main-triggers-content" class="tab-content active">
+      <div class="form-group">
+        <label>Add New Main Trigger</label>
+        <p style="font-size: 12px; margin: 5px 0; color: #666;">Main triggers detect specific pages on websites. Example: "New work order" AND "Work order summary" to detect a work order creation page.</p>
 
-  <label for="keywordInput">Keywords (format: keyword=message):</label>
-  <textarea id="keywordInput"></textarea>
+        <input type="text" id="main-trigger-name" placeholder="Main trigger name (e.g., New work order creation)" style="width: 100%; margin-bottom: 8px; padding: 6px;">
 
-  <button id="saveBtn">Save</button>
+        <div id="main-keyword-container">
+          <div class="keyword-row">
+            <input type="text" class="keyword-input" placeholder="Keyword">
+            <select class="operator-select">
+              <option value="AND">AND</option>
+              <option value="OR">OR</option>
+            </select>
+            <button class="btn btn-danger btn-remove-keyword">×</button>
+          </div>
+        </div>
 
-  <script src="popup.js"></script>
-</body>
+        <div class="actions">
+          <button id="add-main-keyword" class="btn btn-secondary">+ Add Keyword</button>
+          <button id="save-main-trigger" class="btn btn-primary">Save Main Trigger</button>
+          <button id="cancel-main-edit" class="btn btn-secondary" style="display: none;">Cancel Edit</button>
+          <button id="load-main-example" class="btn btn-secondary">Load Example</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Saved Main Triggers</label>
+        <div id="main-triggers-list"></div>
+      </div>
+    </div>
+
+    <!-- Secondary Triggers Tab -->
+    <div id="secondary-triggers-content" class="tab-content">
+      <div class="form-group">
+        <label>Add New Secondary Trigger</label>
+        <p style="font-size: 12px; margin: 5px 0; color: #666;">Secondary triggers detect specific content on pages. Example: "Google" AND "Seattle" to detect specific accounts or locations.</p>
+
+        <input type="text" id="secondary-trigger-name" placeholder="Secondary trigger name (e.g., Google, SEA/BLV)" style="width: 100%; margin-bottom: 8px; padding: 6px;">
+
+        <div id="secondary-keyword-container">
+          <div class="keyword-row">
+            <input type="text" class="keyword-input" placeholder="Keyword">
+            <select class="operator-select">
+              <option value="AND">AND</option>
+              <option value="OR">OR</option>
+            </select>
+            <button class="btn btn-danger btn-remove-keyword">×</button>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="add-secondary-keyword" class="btn btn-secondary">+ Add Keyword</button>
+          <button id="save-secondary-trigger" class="btn btn-primary">Save Secondary Trigger</button>
+          <button id="cancel-secondary-edit" class="btn btn-secondary" style="display: none;">Cancel Edit</button>
+          <button id="load-secondary-example" class="btn btn-secondary">Load Example</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Saved Secondary Triggers</label>
+        <div id="secondary-triggers-list"></div>
+      </div>
+    </div>
+
+    <!-- Alerts Tab -->
+    <div id="alerts-content" class="tab-content">
+      <div class="form-group">
+        <label>Create New Alert</label>
+        <p style="font-size: 12px; margin: 5px 0; color: #666;">Combine main triggers, secondary triggers (optional), and alert messages to create notifications.</p>
+
+        <label for="alert-main-triggers">Main Triggers (select one or more)</label>
+        <div id="alert-main-triggers" style="border: 1px solid #ccc; padding: 8px; margin-bottom: 8px; max-height: 120px; overflow-y: auto;">
+          <p style="color: #666; font-size: 12px;">No main triggers available. Create them in the Main Triggers tab.</p>
+        </div>
+
+        <label for="alert-secondary-triggers">Secondary Triggers (optional - select one or more)</label>
+        <div id="alert-secondary-triggers" style="border: 1px solid #ccc; padding: 8px; margin-bottom: 8px; max-height: 120px; overflow-y: auto;">
+          <p style="color: #666; font-size: 12px;">No secondary triggers available. Create them in the Secondary Triggers tab.</p>
+        </div>
+
+        <label for="alert-message">Alert Message</label>
+        <textarea id="alert-message" placeholder="Enter the alert message to show when triggers match" rows="3" style="width: 100%; margin-bottom: 8px; padding: 6px;"></textarea>
+
+        <div class="actions">
+          <button id="save-alert" class="btn btn-primary">Save Alert</button>
+          <button id="cancel-alert-edit" class="btn btn-secondary" style="display: none;">Cancel Edit</button>
+          <button id="clear-alert-form" class="btn btn-secondary">Clear All Selections</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Active Alerts</label>
+        <div id="alerts-list"></div>
+      </div>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
 </html>
