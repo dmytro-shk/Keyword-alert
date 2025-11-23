@@ -767,10 +767,60 @@ function applyFiltersAndRender() {
 
     // Filter alerts based on current filters
     filteredAlerts = allAlerts.filter(alert => {
-      // Search filter (alert message)
+      // Enhanced search filter - search across all possible fields
       if (currentFilters.search) {
         const searchLower = currentFilters.search.toLowerCase();
-        if (!alert.message.toLowerCase().includes(searchLower)) {
+        let searchFound = false;
+
+        // Search in alert message
+        if (alert.message.toLowerCase().includes(searchLower)) {
+          searchFound = true;
+        }
+
+        // Search in main trigger names and keywords
+        if (!searchFound) {
+          for (const mainTriggerId of alert.mainTriggers) {
+            const mainTrigger = mainTriggers.find(t => t.id === mainTriggerId);
+            if (mainTrigger) {
+              // Search in trigger name
+              if (mainTrigger.name.toLowerCase().includes(searchLower)) {
+                searchFound = true;
+                break;
+              }
+              // Search in trigger keywords
+              if (mainTrigger.keywords && mainTrigger.keywords.some(kw =>
+                kw.keyword.toLowerCase().includes(searchLower)
+              )) {
+                searchFound = true;
+                break;
+              }
+            }
+          }
+        }
+
+        // Search in secondary trigger names and keywords
+        if (!searchFound) {
+          for (const secondaryTriggerId of alert.secondaryTriggers) {
+            const secondaryTrigger = secondaryTriggers.find(t => t.id === secondaryTriggerId);
+            if (secondaryTrigger) {
+              // Search in trigger name
+              if (secondaryTrigger.name.toLowerCase().includes(searchLower)) {
+                searchFound = true;
+                break;
+              }
+              // Search in trigger keywords
+              if (secondaryTrigger.keywords && secondaryTrigger.keywords.some(kw =>
+                kw.keyword.toLowerCase().includes(searchLower)
+              )) {
+                searchFound = true;
+                break;
+              }
+            }
+          }
+        }
+
+        // If search term wasn't found anywhere, exclude this alert
+        if (!searchFound) {
           return false;
         }
       }
