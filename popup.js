@@ -1041,6 +1041,10 @@ function exportData() {
       exportDate: new Date().toISOString(),
       exportSource: "Keyword Alert Extension",
       mergeable: true, // Indicates this export supports merging
+      credits: {
+        icon: "Siren icon from Flaticon",
+        iconUrl: "https://www.flaticon.com/free-icon/siren_18468278"
+      },
       stats: {
         mainTriggers: mainTriggers.length,
         secondaryTriggers: secondaryTriggers.length,
