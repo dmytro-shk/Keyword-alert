@@ -33,7 +33,7 @@
 
       body {
         width: 400px;
-        min-height: 500px;
+        height: 500px;
         margin: 0;
         padding: 0;
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
@@ -44,8 +44,9 @@
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         transition: width 0.3s ease, height 0.3s ease;
-        overflow-x: hidden;
-        overflow-y: auto;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
       }
 
       .header {
@@ -53,6 +54,7 @@
         padding: 12px 16px;
         border-bottom: 1px solid var(--border-secondary);
         text-align: center;
+        flex-shrink: 0;
       }
 
       .header h1 {
@@ -62,11 +64,20 @@
         color: var(--text-primary);
       }
 
+      /* Main content area that grows to fill available space */
+      .main-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
       .tabs {
         display: flex;
         background: var(--surface);
         border-bottom: 1px solid var(--border-secondary);
         padding: 0 16px;
+        flex-shrink: 0;
       }
 
       .tab {
@@ -107,10 +118,13 @@
         display: none;
         padding: 16px;
         background: var(--background);
+        height: 100%;
+        box-sizing: border-box;
       }
 
       .tab-content.active {
-        display: block;
+        display: flex;
+        flex-direction: column;
       }
 
       .section {
@@ -120,6 +134,20 @@
         padding: 14px;
         margin-bottom: 12px;
         box-shadow: var(--shadow);
+      }
+
+      /* Make the saved triggers sections flexible and grow to fill available space */
+      .section-saved-triggers {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 0; /* Remove bottom margin for last section */
+        min-height: 200px; /* Minimum height to prevent too small containers */
+      }
+
+      .section-saved-triggers .scrollable {
+        flex: 1;
+        min-height: 150px; /* Ensure some minimum visible content */
       }
 
       .section-title {
@@ -413,6 +441,15 @@
         margin-bottom: 20px;
       }
 
+      /* Enhanced saved triggers sections in expanded mode */
+      body.expanded .section-saved-triggers {
+        min-height: 300px; /* Larger minimum height in expanded mode */
+      }
+
+      body.expanded .section-saved-triggers .scrollable {
+        min-height: 250px; /* Much larger scrollable area in expanded mode */
+      }
+
       .scrollable::-webkit-scrollbar {
         width: 6px;
       }
@@ -609,11 +646,12 @@
       </div>
     </div>
 
-    <div class="tabs">
-      <button class="tab active" data-tab="main-triggers">Main Triggers</button>
-      <button class="tab" data-tab="secondary-triggers">Secondary</button>
-      <button class="tab" data-tab="alerts">Alerts</button>
-    </div>
+    <div class="main-content">
+      <div class="tabs">
+        <button class="tab active" data-tab="main-triggers">Main Triggers</button>
+        <button class="tab" data-tab="secondary-triggers">Secondary</button>
+        <button class="tab" data-tab="alerts">Alerts</button>
+      </div>
 
     <!-- Main Triggers Tab -->
     <div id="main-triggers-content" class="tab-content active">
@@ -622,7 +660,7 @@
         Create Main Trigger
       </button>
 
-      <div class="section">
+      <div class="section section-saved-triggers">
         <div class="section-title">Saved Main Triggers</div>
         <div id="main-triggers-list" class="scrollable">
           <div class="empty-state">
@@ -641,7 +679,7 @@
         Create Secondary Trigger
       </button>
 
-      <div class="section">
+      <div class="section section-saved-triggers">
         <div class="section-title">Saved Secondary Triggers</div>
         <div id="secondary-triggers-list" class="scrollable">
           <div class="empty-state">
@@ -660,7 +698,7 @@
         Create Alert
       </button>
 
-      <div class="section">
+      <div class="section section-saved-triggers">
         <div class="section-title">Active Alerts</div>
 
         <!-- Filter Section -->
@@ -689,6 +727,7 @@
           </div>
         </div>
       </div>
+    </div>
     </div>
 
     <!-- Main Trigger Modal -->
