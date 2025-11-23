@@ -1032,13 +1032,25 @@ function deleteAlert(alertId) {
 
 function exportData() {
   chrome.storage.local.get(['mainTriggers', 'secondaryTriggers', 'alerts'], res => {
+    const mainTriggers = res.mainTriggers || [];
+    const secondaryTriggers = res.secondaryTriggers || [];
+    const alerts = res.alerts || [];
+
     const exportData = {
       version: "1.0.0",
       exportDate: new Date().toISOString(),
+      exportSource: "Keyword Alert Extension",
+      mergeable: true, // Indicates this export supports merging
+      stats: {
+        mainTriggers: mainTriggers.length,
+        secondaryTriggers: secondaryTriggers.length,
+        alerts: alerts.length,
+        totalItems: mainTriggers.length + secondaryTriggers.length + alerts.length
+      },
       data: {
-        mainTriggers: res.mainTriggers || [],
-        secondaryTriggers: res.secondaryTriggers || [],
-        alerts: res.alerts || []
+        mainTriggers: mainTriggers,
+        secondaryTriggers: secondaryTriggers,
+        alerts: alerts
       }
     };
 
@@ -1078,42 +1090,8 @@ function handleImport(event) {
         throw new Error('Invalid file format');
       }
 
-      // Show confirmation dialog
-      const mainCount = importData.data.mainTriggers.length;
-      const secondaryCount = importData.data.secondaryTriggers.length;
-      const alertCount = importData.data.alerts.length;
-
-      const confirmMessage = `Import ${mainCount} main trigger(s), ${secondaryCount} secondary trigger(s), and ${alertCount} alert(s)?\n\nThis will replace ALL existing data!`;
-
-      if (!confirm(confirmMessage)) {
-        // Reset file input
-        importFile.value = '';
-        return;
-      }
-
-      // Import the data
-      chrome.storage.local.set({
-        mainTriggers: importData.data.mainTriggers,
-        secondaryTriggers: importData.data.secondaryTriggers,
-        alerts: importData.data.alerts
-      }, () => {
-        // Reload all data
-        loadAllData();
-
-        // Show success message
-        const originalText = importBtn.textContent;
-        importBtn.textContent = 'Imported!';
-        importBtn.style.background = 'var(--success)';
-        importBtn.style.color = 'white';
-
-        setTimeout(() => {
-          importBtn.textContent = originalText;
-          importBtn.style.background = '';
-          importBtn.style.color = '';
-        }, 2000);
-
-        alert(`Successfully imported:\n• ${mainCount} main triggers\n• ${secondaryCount} secondary triggers\n• ${alertCount} alerts`);
-      });
+      // Show import options dialog
+      showImportOptionsDialog(importData);
 
     } catch (error) {
       alert('Error importing file: Invalid JSON format or corrupted file.');
@@ -1125,6 +1103,294 @@ function handleImport(event) {
   };
 
   reader.readAsText(file);
+}
+
+function showImportOptionsDialog(importData) {
+  const mainCount = importData.data.mainTriggers.length;
+  const secondaryCount = importData.data.secondaryTriggers.length;
+  const alertCount = importData.data.alerts.length;
+
+  const exportDate = importData.exportDate ? new Date(importData.exportDate).toLocaleDateString() : 'Unknown';
+  const version = importData.version || 'Unknown';
+
+  // Get current data counts
+  chrome.storage.local.get(['mainTriggers', 'secondaryTriggers', 'alerts'], res => {
+    const currentMainCount = (res.mainTriggers || []).length;
+    const currentSecondaryCount = (res.secondaryTriggers || []).length;
+    const currentAlertCount = (res.alerts || []).length;
+
+    // Show simple confirmation dialog first
+    const basicMessage = `Found import file with ${mainCount} main triggers, ${secondaryCount} secondary triggers, and ${alertCount} alerts.
+
+You currently have ${currentMainCount} main triggers, ${currentSecondaryCount} secondary triggers, and ${currentAlertCount} alerts.
+
+Do you want to MERGE the data (combine with existing) or REPLACE all data?
+
+Click OK to MERGE, Cancel to see REPLACE option.`;
+
+    const wantsMerge = confirm(basicMessage);
+
+    if (wantsMerge) {
+      console.log('User chose MERGE');
+      performMergeImport(importData, res);
+    } else {
+      // Ask for replace confirmation
+      const replaceConfirm = confirm(`REPLACE: This will delete ALL current data and replace with the imported data. Continue?`);
+      if (replaceConfirm) {
+        console.log('User chose REPLACE');
+        performReplaceImport(importData);
+      } else {
+        console.log('User cancelled import');
+        return;
+      }
+    }
+  });
+}
+
+function performReplaceImport(importData) {
+  const mainCount = importData.data.mainTriggers.length;
+  const secondaryCount = importData.data.secondaryTriggers.length;
+  const alertCount = importData.data.alerts.length;
+
+  if (!confirm(`REPLACE: This will delete ALL current data and replace with ${mainCount} main trigger(s), ${secondaryCount} secondary trigger(s), and ${alertCount} alert(s). Continue?`)) {
+    return;
+  }
+
+  // Replace all data (original behavior)
+  chrome.storage.local.set({
+    mainTriggers: importData.data.mainTriggers,
+    secondaryTriggers: importData.data.secondaryTriggers,
+    alerts: importData.data.alerts
+  }, () => {
+    loadAllData();
+    showImportSuccess('Data replaced successfully!');
+  });
+}
+
+function performMergeImport(importData, currentData) {
+  console.log('Starting merge import...');
+  console.log('Current data:', currentData);
+  console.log('Import data:', importData.data);
+
+  try {
+    const mergedData = mergeConfigurations(currentData, importData.data);
+    console.log('Merged data:', mergedData);
+
+    const confirmMessage = `MERGE: This will combine the imported data with your existing data.
+
+After merge you will have:
+• Main Triggers: ${mergedData.mainTriggers.length} (${mergedData.stats.mainAdded} new)
+• Secondary Triggers: ${mergedData.secondaryTriggers.length} (${mergedData.stats.secondaryAdded} new)
+• Alerts: ${mergedData.alerts.length} (${mergedData.stats.alertsAdded} new)
+
+${mergedData.stats.duplicatesSkipped > 0 ? `• ${mergedData.stats.duplicatesSkipped} duplicate(s) skipped` : ''}
+
+Continue with merge?`;
+
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    console.log('User confirmed merge, applying data...');
+
+    // Apply merged data
+    chrome.storage.local.set({
+      mainTriggers: mergedData.mainTriggers,
+      secondaryTriggers: mergedData.secondaryTriggers,
+      alerts: mergedData.alerts
+    }, () => {
+      if (chrome.runtime.lastError) {
+        console.error('Storage error:', chrome.runtime.lastError);
+        alert('Error saving merged data: ' + chrome.runtime.lastError.message);
+        return;
+      }
+
+      console.log('Data successfully saved to storage');
+      loadAllData();
+      showImportSuccess(`Data merged successfully! Added ${mergedData.stats.mainAdded + mergedData.stats.secondaryAdded + mergedData.stats.alertsAdded} new items.`);
+    });
+  } catch (error) {
+    console.error('Error during merge:', error);
+    alert('Error during merge: ' + error.message);
+  }
+}
+
+function mergeConfigurations(currentData, importedData) {
+  console.log('mergeConfigurations called with:', { currentData, importedData });
+
+  const current = {
+    mainTriggers: currentData.mainTriggers || [],
+    secondaryTriggers: currentData.secondaryTriggers || [],
+    alerts: currentData.alerts || []
+  };
+
+  const imported = {
+    mainTriggers: importedData.mainTriggers || [],
+    secondaryTriggers: importedData.secondaryTriggers || [],
+    alerts: importedData.alerts || []
+  };
+
+  console.log('Processed data:', { current, imported });
+
+  // Generate new unique IDs to avoid conflicts
+  const generateNewId = () => Date.now() + Math.floor(Math.random() * 1000);
+
+  // Create ID mapping for imported items
+  const mainTriggerIdMap = new Map();
+  const secondaryTriggerIdMap = new Map();
+
+  // Merge main triggers
+  const mergedMainTriggers = [...current.mainTriggers];
+  let mainAdded = 0;
+  let duplicatesSkipped = 0;
+
+  imported.mainTriggers.forEach(importedTrigger => {
+    console.log('Processing imported main trigger:', importedTrigger);
+
+    // Check for duplicate by name and keywords
+    const isDuplicate = current.mainTriggers.some(existingTrigger => {
+      const nameMatch = existingTrigger.name.toLowerCase() === importedTrigger.name.toLowerCase();
+
+      // More robust keyword comparison
+      const existingKeywords = existingTrigger.keywords || [];
+      const importedKeywords = importedTrigger.keywords || [];
+      const keywordsMatch = JSON.stringify(existingKeywords.sort()) === JSON.stringify(importedKeywords.sort());
+
+      console.log('Comparing triggers:', {
+        existing: existingTrigger.name,
+        imported: importedTrigger.name,
+        nameMatch,
+        keywordsMatch
+      });
+
+      return nameMatch && keywordsMatch;
+    });
+
+    if (!isDuplicate) {
+      const newId = generateNewId();
+      const newTrigger = { ...importedTrigger, id: newId };
+      mainTriggerIdMap.set(importedTrigger.id, newId);
+      mergedMainTriggers.push(newTrigger);
+      mainAdded++;
+    } else {
+      duplicatesSkipped++;
+      // Map old ID to existing trigger's ID for alert mapping
+      const existingTrigger = current.mainTriggers.find(t =>
+        t.name.toLowerCase() === importedTrigger.name.toLowerCase() &&
+        JSON.stringify(t.keywords) === JSON.stringify(importedTrigger.keywords)
+      );
+      if (existingTrigger) {
+        mainTriggerIdMap.set(importedTrigger.id, existingTrigger.id);
+      }
+    }
+  });
+
+  // Merge secondary triggers
+  const mergedSecondaryTriggers = [...current.secondaryTriggers];
+  let secondaryAdded = 0;
+
+  imported.secondaryTriggers.forEach(importedTrigger => {
+    console.log('Processing imported secondary trigger:', importedTrigger);
+
+    // Check for duplicate by name and keywords
+    const isDuplicate = current.secondaryTriggers.some(existingTrigger => {
+      const nameMatch = existingTrigger.name.toLowerCase() === importedTrigger.name.toLowerCase();
+
+      // More robust keyword comparison
+      const existingKeywords = existingTrigger.keywords || [];
+      const importedKeywords = importedTrigger.keywords || [];
+      const keywordsMatch = JSON.stringify(existingKeywords.sort()) === JSON.stringify(importedKeywords.sort());
+
+      return nameMatch && keywordsMatch;
+    });
+
+    if (!isDuplicate) {
+      const newId = generateNewId();
+      const newTrigger = { ...importedTrigger, id: newId };
+      secondaryTriggerIdMap.set(importedTrigger.id, newId);
+      mergedSecondaryTriggers.push(newTrigger);
+      secondaryAdded++;
+    } else {
+      duplicatesSkipped++;
+      // Map old ID to existing trigger's ID for alert mapping
+      const existingTrigger = current.secondaryTriggers.find(t =>
+        t.name.toLowerCase() === importedTrigger.name.toLowerCase() &&
+        JSON.stringify(t.keywords) === JSON.stringify(importedTrigger.keywords)
+      );
+      if (existingTrigger) {
+        secondaryTriggerIdMap.set(importedTrigger.id, existingTrigger.id);
+      }
+    }
+  });
+
+  // Merge alerts with updated trigger IDs
+  const mergedAlerts = [...current.alerts];
+  let alertsAdded = 0;
+
+  imported.alerts.forEach(importedAlert => {
+    // Update trigger IDs to match merged triggers
+    const updatedMainTriggers = importedAlert.mainTriggers
+      .map(id => mainTriggerIdMap.get(id))
+      .filter(id => id !== undefined);
+
+    const updatedSecondaryTriggers = importedAlert.secondaryTriggers
+      .map(id => secondaryTriggerIdMap.get(id))
+      .filter(id => id !== undefined);
+
+    // Only add alert if it has at least one valid main trigger
+    if (updatedMainTriggers.length > 0) {
+      // Check for duplicate alert by message and triggers
+      const isDuplicate = current.alerts.some(existingAlert =>
+        existingAlert.message.toLowerCase() === importedAlert.message.toLowerCase() &&
+        JSON.stringify(existingAlert.mainTriggers.sort()) === JSON.stringify(updatedMainTriggers.sort()) &&
+        JSON.stringify(existingAlert.secondaryTriggers.sort()) === JSON.stringify(updatedSecondaryTriggers.sort())
+      );
+
+      if (!isDuplicate) {
+        const newAlert = {
+          ...importedAlert,
+          id: generateNewId(),
+          mainTriggers: updatedMainTriggers,
+          secondaryTriggers: updatedSecondaryTriggers
+        };
+        mergedAlerts.push(newAlert);
+        alertsAdded++;
+      } else {
+        duplicatesSkipped++;
+      }
+    }
+  });
+
+  const result = {
+    mainTriggers: mergedMainTriggers,
+    secondaryTriggers: mergedSecondaryTriggers,
+    alerts: mergedAlerts,
+    stats: {
+      mainAdded,
+      secondaryAdded,
+      alertsAdded,
+      duplicatesSkipped
+    }
+  };
+
+  console.log('Merge result:', result);
+  return result;
+}
+
+function showImportSuccess(message) {
+  // Show success message on import button
+  const originalText = importBtn.textContent;
+  importBtn.textContent = 'Imported!';
+  importBtn.style.background = 'var(--success)';
+  importBtn.style.color = 'white';
+
+  setTimeout(() => {
+    importBtn.textContent = originalText;
+    importBtn.style.background = '';
+    importBtn.style.color = '';
+  }, 2000);
+
+  alert(message);
 }
 
 function clearAllData() {
