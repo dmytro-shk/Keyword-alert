@@ -8,7 +8,6 @@ const mainKeywordContainer = document.getElementById('main-keyword-container');
 const addMainKeywordBtn = document.getElementById('add-main-keyword');
 const saveMainTriggerBtn = document.getElementById('save-main-trigger');
 const cancelMainEditBtn = document.getElementById('cancel-main-edit');
-const loadMainExampleBtn = document.getElementById('load-main-example');
 const mainTriggersList = document.getElementById('main-triggers-list');
 
 // Secondary Triggers tab elements
@@ -17,7 +16,6 @@ const secondaryKeywordContainer = document.getElementById('secondary-keyword-con
 const addSecondaryKeywordBtn = document.getElementById('add-secondary-keyword');
 const saveSecondaryTriggerBtn = document.getElementById('save-secondary-trigger');
 const cancelSecondaryEditBtn = document.getElementById('cancel-secondary-edit');
-const loadSecondaryExampleBtn = document.getElementById('load-secondary-example');
 const secondaryTriggersList = document.getElementById('secondary-triggers-list');
 
 // Alerts tab elements
@@ -28,6 +26,20 @@ const saveAlertBtn = document.getElementById('save-alert');
 const cancelAlertEditBtn = document.getElementById('cancel-alert-edit');
 const clearAlertFormBtn = document.getElementById('clear-alert-form');
 const alertsList = document.getElementById('alerts-list');
+
+// Filter elements
+const alertFilterInput = document.getElementById('alert-filter-input');
+const alertFilterMain = document.getElementById('alert-filter-main');
+const alertFilterSecondary = document.getElementById('alert-filter-secondary');
+const clearAlertFilterBtn = document.getElementById('clear-alert-filter');
+const alertCount = document.getElementById('alert-count');
+
+// Import/Export elements
+const expandBtn = document.getElementById('expand-btn');
+const exportBtn = document.getElementById('export-btn');
+const importBtn = document.getElementById('import-btn');
+const importFile = document.getElementById('import-file');
+const clearAllBtn = document.getElementById('clear-all-btn');
 
 // Initialize app
 function init() {
@@ -70,18 +82,41 @@ function setupEventHandlers() {
   addMainKeywordBtn.addEventListener('click', () => addKeywordRow(mainKeywordContainer));
   saveMainTriggerBtn.addEventListener('click', saveMainTrigger);
   cancelMainEditBtn.addEventListener('click', clearMainTriggerForm);
-  loadMainExampleBtn.addEventListener('click', loadMainExample);
 
   // Secondary Triggers functionality
   addSecondaryKeywordBtn.addEventListener('click', () => addKeywordRow(secondaryKeywordContainer));
   saveSecondaryTriggerBtn.addEventListener('click', saveSecondaryTrigger);
   cancelSecondaryEditBtn.addEventListener('click', clearSecondaryTriggerForm);
-  loadSecondaryExampleBtn.addEventListener('click', loadSecondaryExample);
 
   // Alerts functionality
   saveAlertBtn.addEventListener('click', saveAlert);
   cancelAlertEditBtn.addEventListener('click', clearAlertForm);
   clearAlertFormBtn.addEventListener('click', clearAlertForm);
+
+  // Filter functionality
+  alertFilterInput.addEventListener('input', (e) => {
+    currentFilters.search = e.target.value;
+    applyFiltersAndRender();
+  });
+
+  alertFilterMain.addEventListener('change', (e) => {
+    currentFilters.mainTrigger = e.target.value;
+    applyFiltersAndRender();
+  });
+
+  alertFilterSecondary.addEventListener('change', (e) => {
+    currentFilters.secondaryTrigger = e.target.value;
+    applyFiltersAndRender();
+  });
+
+  clearAlertFilterBtn.addEventListener('click', clearAllFilters);
+
+  // Import/Export functionality
+  expandBtn.addEventListener('click', toggleExpanded);
+  exportBtn.addEventListener('click', exportData);
+  importBtn.addEventListener('click', () => importFile.click());
+  importFile.addEventListener('change', handleImport);
+  clearAllBtn.addEventListener('click', clearAllData);
 
   // Keyword row removal (delegated events)
   mainKeywordContainer.addEventListener('click', (e) => {
@@ -217,37 +252,6 @@ function evaluateTrigger(trigger, text) {
 
 // ===== MAIN TRIGGERS FUNCTIONS =====
 
-function loadMainExample() {
-  if (!confirm('This will clear the current form and load an example main trigger. Continue?')) return;
-
-  mainTriggerNameInput.value = 'New work order creation';
-  mainKeywordContainer.innerHTML = `
-    <div class="keyword-row">
-      <input type="text" class="keyword-input" placeholder="Keyword" value="New work order">
-      <select class="operator-select">
-        <option value="AND" selected>AND</option>
-        <option value="OR">OR</option>
-      </select>
-      <button class="btn btn-danger btn-remove-keyword">×</button>
-    </div>
-    <div class="keyword-row">
-      <input type="text" class="keyword-input" placeholder="Keyword" value="Work order summary">
-      <select class="operator-select">
-        <option value="AND">AND</option>
-        <option value="OR" selected>OR</option>
-      </select>
-      <button class="btn btn-danger btn-remove-keyword">×</button>
-    </div>
-    <div class="keyword-row">
-      <input type="text" class="keyword-input" placeholder="Keyword" value="Convert to a Work Order">
-      <select class="operator-select">
-        <option value="AND">AND</option>
-        <option value="OR">OR</option>
-      </select>
-      <button class="btn btn-danger btn-remove-keyword">×</button>
-    </div>
-  `;
-}
 
 // Variable to track if we're editing
 let editingMainTriggerId = null;
@@ -356,19 +360,30 @@ function loadMainTriggers() {
 
     mainTriggersList.innerHTML = '';
 
+    if (mainTriggers.length === 0) {
+      mainTriggersList.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">⚡</div>
+          <div class="empty-state-text">No main triggers yet</div>
+          <div class="empty-state-subtext">Create your first trigger above</div>
+        </div>
+      `;
+      return;
+    }
+
     mainTriggers.forEach(trigger => {
       const div = document.createElement('div');
-      div.className = 'preset-item';
+      div.className = 'trigger-item';
 
       const keywordText = trigger.keywords.map(k =>
         k.operator ? `${k.keyword} ${k.operator}` : k.keyword
       ).join(' ');
 
       div.innerHTML = `
-        <div class="preset-name">${trigger.name}</div>
-        <div class="preset-keywords">${keywordText}</div>
-        <div style="margin-top: 8px;">
-          <button class="btn btn-secondary edit-main-trigger" data-trigger-id="${trigger.id}" style="margin-right: 5px;">Edit</button>
+        <div class="item-title">${trigger.name}</div>
+        <div class="item-keywords">${keywordText}</div>
+        <div class="item-actions">
+          <button class="btn btn-secondary edit-main-trigger" data-trigger-id="${trigger.id}">Edit</button>
           <button class="btn btn-danger delete-main-trigger" data-trigger-id="${trigger.id}">Delete</button>
         </div>
       `;
@@ -392,37 +407,6 @@ function deleteMainTrigger(triggerId) {
 
 // ===== SECONDARY TRIGGERS FUNCTIONS =====
 
-function loadSecondaryExample() {
-  if (!confirm('This will clear the current form and load an example secondary trigger. Continue?')) return;
-
-  secondaryTriggerNameInput.value = 'Google, SEA/BLV';
-  secondaryKeywordContainer.innerHTML = `
-    <div class="keyword-row">
-      <input type="text" class="keyword-input" placeholder="Keyword" value="Google">
-      <select class="operator-select">
-        <option value="AND" selected>AND</option>
-        <option value="OR">OR</option>
-      </select>
-      <button class="btn btn-danger btn-remove-keyword">×</button>
-    </div>
-    <div class="keyword-row">
-      <input type="text" class="keyword-input" placeholder="Keyword" value="Seattle">
-      <select class="operator-select">
-        <option value="AND">AND</option>
-        <option value="OR" selected>OR</option>
-      </select>
-      <button class="btn btn-danger btn-remove-keyword">×</button>
-    </div>
-    <div class="keyword-row">
-      <input type="text" class="keyword-input" placeholder="Keyword" value="Bellevue">
-      <select class="operator-select">
-        <option value="AND">AND</option>
-        <option value="OR">OR</option>
-      </select>
-      <button class="btn btn-danger btn-remove-keyword">×</button>
-    </div>
-  `;
-}
 
 // Variable to track if we're editing
 let editingSecondaryTriggerId = null;
@@ -524,19 +508,30 @@ function loadSecondaryTriggers() {
     const secondaryTriggers = res.secondaryTriggers || [];
     secondaryTriggersList.innerHTML = '';
 
+    if (secondaryTriggers.length === 0) {
+      secondaryTriggersList.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">🎯</div>
+          <div class="empty-state-text">No secondary triggers yet</div>
+          <div class="empty-state-subtext">Create your first trigger above</div>
+        </div>
+      `;
+      return;
+    }
+
     secondaryTriggers.forEach(trigger => {
       const div = document.createElement('div');
-      div.className = 'preset-item';
+      div.className = 'trigger-item';
 
       const keywordText = trigger.keywords.map(k =>
         k.operator ? `${k.keyword} ${k.operator}` : k.keyword
       ).join(' ');
 
       div.innerHTML = `
-        <div class="preset-name">${trigger.name}</div>
-        <div class="preset-keywords">${keywordText}</div>
-        <div style="margin-top: 8px;">
-          <button class="btn btn-secondary edit-secondary-trigger" data-trigger-id="${trigger.id}" style="margin-right: 5px;">Edit</button>
+        <div class="item-title">${trigger.name}</div>
+        <div class="item-keywords">${keywordText}</div>
+        <div class="item-actions">
+          <button class="btn btn-secondary edit-secondary-trigger" data-trigger-id="${trigger.id}">Edit</button>
           <button class="btn btn-danger delete-secondary-trigger" data-trigger-id="${trigger.id}">Delete</button>
         </div>
       `;
@@ -567,15 +562,17 @@ function loadTriggersForAlerts(callback) {
     // Load main triggers checkboxes
     alertMainTriggersDiv.innerHTML = '';
     if (mainTriggers.length === 0) {
-      alertMainTriggersDiv.innerHTML = '<p style="color: #666; font-size: 12px;">No main triggers available. Create them in the Main Triggers tab.</p>';
+      alertMainTriggersDiv.innerHTML = `
+        <div class="empty-state-text">No main triggers available</div>
+        <div class="empty-state-subtext">Create them in the Main Triggers tab</div>
+      `;
     } else {
       mainTriggers.forEach(trigger => {
         const div = document.createElement('div');
+        div.className = 'checkbox-item';
         div.innerHTML = `
-          <label style="display: block; margin-bottom: 5px;">
-            <input type="checkbox" value="${trigger.id}" style="margin-right: 5px;">
-            ${trigger.name}
-          </label>
+          <input type="checkbox" value="${trigger.id}" id="main-${trigger.id}">
+          <label for="main-${trigger.id}">${trigger.name}</label>
         `;
         alertMainTriggersDiv.appendChild(div);
       });
@@ -584,15 +581,17 @@ function loadTriggersForAlerts(callback) {
     // Load secondary triggers checkboxes
     alertSecondaryTriggersDiv.innerHTML = '';
     if (secondaryTriggers.length === 0) {
-      alertSecondaryTriggersDiv.innerHTML = '<p style="color: #666; font-size: 12px;">No secondary triggers available. Create them in the Secondary Triggers tab.</p>';
+      alertSecondaryTriggersDiv.innerHTML = `
+        <div class="empty-state-text">No secondary triggers available</div>
+        <div class="empty-state-subtext">Create them in the Secondary Triggers tab</div>
+      `;
     } else {
       secondaryTriggers.forEach(trigger => {
         const div = document.createElement('div');
+        div.className = 'checkbox-item';
         div.innerHTML = `
-          <label style="display: block; margin-bottom: 5px;">
-            <input type="checkbox" value="${trigger.id}" style="margin-right: 5px;">
-            ${trigger.name}
-          </label>
+          <input type="checkbox" value="${trigger.id}" id="secondary-${trigger.id}">
+          <label for="secondary-${trigger.id}">${trigger.name}</label>
         `;
         alertSecondaryTriggersDiv.appendChild(div);
       });
@@ -607,6 +606,15 @@ function loadTriggersForAlerts(callback) {
 
 // Variable to track if we're editing
 let editingAlertId = null;
+
+// Filter state
+let allAlerts = [];
+let filteredAlerts = [];
+let currentFilters = {
+  search: '',
+  mainTrigger: '',
+  secondaryTrigger: ''
+};
 
 function saveAlert() {
   const selectedMainTriggers = Array.from(alertMainTriggersDiv.querySelectorAll('input[type="checkbox"]:checked')).map(cb => parseInt(cb.value));
@@ -716,37 +724,161 @@ function clearAlertForm() {
 
 function loadAlerts() {
   chrome.storage.local.get(['alerts', 'mainTriggers', 'secondaryTriggers'], res => {
-    const alerts = res.alerts || [];
+    allAlerts = res.alerts || [];
     const mainTriggers = res.mainTriggers || [];
     const secondaryTriggers = res.secondaryTriggers || [];
-    alertsList.innerHTML = '';
 
-    alerts.forEach(alert => {
-      const div = document.createElement('div');
-      div.className = 'message-item';
+    // Update filter dropdowns
+    updateFilterDropdowns(mainTriggers, secondaryTriggers);
 
-      const selectedMainTriggerNames = alert.mainTriggers.map(id => {
-        const trigger = mainTriggers.find(t => t.id === id);
-        return trigger ? trigger.name : 'Deleted Trigger';
-      });
-
-      const selectedSecondaryTriggerNames = alert.secondaryTriggers.map(id => {
-        const trigger = secondaryTriggers.find(t => t.id === id);
-        return trigger ? trigger.name : 'Deleted Trigger';
-      });
-
-      div.innerHTML = `
-        <div><strong>Main Triggers:</strong> ${selectedMainTriggerNames.join(', ')}</div>
-        ${selectedSecondaryTriggerNames.length > 0 ? `<div><strong>Secondary Triggers:</strong> ${selectedSecondaryTriggerNames.join(', ')}</div>` : ''}
-        <div style="background: #e3f2fd; padding: 8px; border-radius: 3px; margin-top: 8px;"><strong>Message:</strong> ${alert.message}</div>
-        <div style="margin-top: 8px;">
-          <button class="btn btn-secondary edit-alert" data-alert-id="${alert.id}" style="margin-right: 5px;">Edit</button>
-          <button class="btn btn-danger delete-alert" data-alert-id="${alert.id}">Delete</button>
-        </div>
-      `;
-      alertsList.appendChild(div);
-    });
+    // Apply current filters and render
+    applyFiltersAndRender();
   });
+}
+
+function updateFilterDropdowns(mainTriggers, secondaryTriggers) {
+  // Update main triggers dropdown
+  alertFilterMain.innerHTML = '<option value="">All Main Triggers</option>';
+  mainTriggers.forEach(trigger => {
+    const option = document.createElement('option');
+    option.value = trigger.id;
+    option.textContent = trigger.name;
+    alertFilterMain.appendChild(option);
+  });
+
+  // Update secondary triggers dropdown
+  alertFilterSecondary.innerHTML = '<option value="">All Secondary Triggers</option>';
+  secondaryTriggers.forEach(trigger => {
+    const option = document.createElement('option');
+    option.value = trigger.id;
+    option.textContent = trigger.name;
+    alertFilterSecondary.appendChild(option);
+  });
+
+  // Restore selected filter values
+  alertFilterMain.value = currentFilters.mainTrigger;
+  alertFilterSecondary.value = currentFilters.secondaryTrigger;
+}
+
+function applyFiltersAndRender() {
+  chrome.storage.local.get(['mainTriggers', 'secondaryTriggers'], res => {
+    const mainTriggers = res.mainTriggers || [];
+    const secondaryTriggers = res.secondaryTriggers || [];
+
+    // Filter alerts based on current filters
+    filteredAlerts = allAlerts.filter(alert => {
+      // Search filter (alert message)
+      if (currentFilters.search) {
+        const searchLower = currentFilters.search.toLowerCase();
+        if (!alert.message.toLowerCase().includes(searchLower)) {
+          return false;
+        }
+      }
+
+      // Main trigger filter
+      if (currentFilters.mainTrigger) {
+        const mainTriggerId = parseInt(currentFilters.mainTrigger);
+        if (!alert.mainTriggers.includes(mainTriggerId)) {
+          return false;
+        }
+      }
+
+      // Secondary trigger filter
+      if (currentFilters.secondaryTrigger) {
+        const secondaryTriggerId = parseInt(currentFilters.secondaryTrigger);
+        if (!alert.secondaryTriggers.includes(secondaryTriggerId)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+
+    // Update count
+    updateAlertCount();
+
+    // Render filtered alerts
+    renderFilteredAlerts(mainTriggers, secondaryTriggers);
+  });
+}
+
+function updateAlertCount() {
+  if (allAlerts.length === 0) {
+    alertCount.textContent = '';
+  } else if (filteredAlerts.length === allAlerts.length) {
+    alertCount.textContent = `${allAlerts.length} alert${allAlerts.length !== 1 ? 's' : ''}`;
+  } else {
+    alertCount.textContent = `${filteredAlerts.length} of ${allAlerts.length} alert${allAlerts.length !== 1 ? 's' : ''}`;
+  }
+}
+
+function renderFilteredAlerts(mainTriggers, secondaryTriggers) {
+  alertsList.innerHTML = '';
+
+  if (allAlerts.length === 0) {
+    alertsList.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">🔔</div>
+        <div class="empty-state-text">No alerts configured</div>
+        <div class="empty-state-subtext">Create your first alert above</div>
+      </div>
+    `;
+    return;
+  }
+
+  if (filteredAlerts.length === 0) {
+    alertsList.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">🔍</div>
+        <div class="empty-state-text">No alerts match your filters</div>
+        <div class="empty-state-subtext">Try adjusting your search or filters</div>
+      </div>
+    `;
+    return;
+  }
+
+  filteredAlerts.forEach(alert => {
+    const div = document.createElement('div');
+    div.className = 'alert-item';
+
+    const selectedMainTriggerNames = alert.mainTriggers.map(id => {
+      const trigger = mainTriggers.find(t => t.id === id);
+      return trigger ? trigger.name : 'Deleted Trigger';
+    });
+
+    const selectedSecondaryTriggerNames = alert.secondaryTriggers.map(id => {
+      const trigger = secondaryTriggers.find(t => t.id === id);
+      return trigger ? trigger.name : 'Deleted Trigger';
+    });
+
+    div.innerHTML = `
+      <div class="item-title">Alert: ${alert.message}</div>
+      <div style="margin-bottom: 8px;">
+        <strong>Main:</strong> ${selectedMainTriggerNames.join(', ')}
+      </div>
+      ${selectedSecondaryTriggerNames.length > 0 ? `<div style="margin-bottom: 12px;"><strong>Secondary:</strong> ${selectedSecondaryTriggerNames.join(', ')}</div>` : ''}
+      <div class="alert-message">${alert.message}</div>
+      <div class="item-actions">
+        <button class="btn btn-secondary edit-alert" data-alert-id="${alert.id}">Edit</button>
+        <button class="btn btn-danger delete-alert" data-alert-id="${alert.id}">Delete</button>
+      </div>
+    `;
+    alertsList.appendChild(div);
+  });
+}
+
+function clearAllFilters() {
+  currentFilters = {
+    search: '',
+    mainTrigger: '',
+    secondaryTrigger: ''
+  };
+
+  alertFilterInput.value = '';
+  alertFilterMain.value = '';
+  alertFilterSecondary.value = '';
+
+  applyFiltersAndRender();
 }
 
 function deleteAlert(alertId) {
@@ -760,6 +892,145 @@ function deleteAlert(alertId) {
   });
 }
 
+// ===== IMPORT/EXPORT FUNCTIONS =====
+
+function exportData() {
+  chrome.storage.local.get(['mainTriggers', 'secondaryTriggers', 'alerts'], res => {
+    const exportData = {
+      version: "1.0.0",
+      exportDate: new Date().toISOString(),
+      data: {
+        mainTriggers: res.mainTriggers || [],
+        secondaryTriggers: res.secondaryTriggers || [],
+        alerts: res.alerts || []
+      }
+    };
+
+    const dataStr = JSON.stringify(exportData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(dataBlob);
+    link.download = `keyword-alert-backup-${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+
+    // Show success message
+    const originalText = exportBtn.textContent;
+    exportBtn.textContent = 'Exported!';
+    exportBtn.style.background = 'var(--success)';
+    exportBtn.style.color = 'white';
+
+    setTimeout(() => {
+      exportBtn.textContent = originalText;
+      exportBtn.style.background = '';
+      exportBtn.style.color = '';
+    }, 2000);
+  });
+}
+
+function handleImport(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const importData = JSON.parse(e.target.result);
+
+      // Validate import data structure
+      if (!importData.data || !importData.data.mainTriggers || !importData.data.secondaryTriggers || !importData.data.alerts) {
+        throw new Error('Invalid file format');
+      }
+
+      // Show confirmation dialog
+      const mainCount = importData.data.mainTriggers.length;
+      const secondaryCount = importData.data.secondaryTriggers.length;
+      const alertCount = importData.data.alerts.length;
+
+      const confirmMessage = `Import ${mainCount} main trigger(s), ${secondaryCount} secondary trigger(s), and ${alertCount} alert(s)?\n\nThis will replace ALL existing data!`;
+
+      if (!confirm(confirmMessage)) {
+        // Reset file input
+        importFile.value = '';
+        return;
+      }
+
+      // Import the data
+      chrome.storage.local.set({
+        mainTriggers: importData.data.mainTriggers,
+        secondaryTriggers: importData.data.secondaryTriggers,
+        alerts: importData.data.alerts
+      }, () => {
+        // Reload all data
+        loadAllData();
+
+        // Show success message
+        const originalText = importBtn.textContent;
+        importBtn.textContent = 'Imported!';
+        importBtn.style.background = 'var(--success)';
+        importBtn.style.color = 'white';
+
+        setTimeout(() => {
+          importBtn.textContent = originalText;
+          importBtn.style.background = '';
+          importBtn.style.color = '';
+        }, 2000);
+
+        alert(`Successfully imported:\n• ${mainCount} main triggers\n• ${secondaryCount} secondary triggers\n• ${alertCount} alerts`);
+      });
+
+    } catch (error) {
+      alert('Error importing file: Invalid JSON format or corrupted file.');
+      console.error('Import error:', error);
+    }
+
+    // Reset file input
+    importFile.value = '';
+  };
+
+  reader.readAsText(file);
+}
+
+function clearAllData() {
+  const confirmMessage = 'Are you sure you want to clear ALL data?\n\nThis will permanently delete:\n• All main triggers\n• All secondary triggers\n• All alerts\n\nThis action cannot be undone!';
+
+  if (!confirm(confirmMessage)) {
+    return;
+  }
+
+  const doubleConfirm = 'This is your final warning!\n\nType "DELETE" to confirm you want to clear all data:';
+  const userInput = prompt(doubleConfirm);
+
+  if (userInput !== 'DELETE') {
+    alert('Clear cancelled. Your data is safe.');
+    return;
+  }
+
+  chrome.storage.local.set({
+    mainTriggers: [],
+    secondaryTriggers: [],
+    alerts: []
+  }, () => {
+    // Clear filters
+    clearAllFilters();
+
+    // Reload all data
+    loadAllData();
+
+    // Show success message
+    const originalText = clearAllBtn.textContent;
+    clearAllBtn.textContent = '✅ Cleared!';
+    clearAllBtn.style.background = 'var(--success)';
+
+    setTimeout(() => {
+      clearAllBtn.textContent = originalText;
+      clearAllBtn.style.background = '';
+    }, 2000);
+
+    alert('All data has been cleared successfully.');
+  });
+}
+
 // ===== LOAD ALL DATA =====
 
 function loadAllData() {
@@ -767,6 +1038,39 @@ function loadAllData() {
   loadSecondaryTriggers();
   loadAlerts();
   loadTriggersForAlerts();
+}
+
+// ===== EXPAND FUNCTIONALITY =====
+
+let isExpanded = false;
+
+function toggleExpanded() {
+  isExpanded = !isExpanded;
+
+  if (isExpanded) {
+    // Use Chrome extension popup maximum safe dimensions
+    // Chrome typically limits popups to around 800x600 maximum
+    const maxWidth = 750;
+    const maxHeight = 580;
+
+    // Apply expanded styles within Chrome's limits
+    document.body.style.width = maxWidth + 'px';
+    document.body.style.height = maxHeight + 'px';
+    document.body.style.maxHeight = maxHeight + 'px';
+    document.body.style.minHeight = 'auto';
+
+    // Update button text and icon
+    expandBtn.textContent = '🗗 Collapse';
+  } else {
+    // Reset to original compact size
+    document.body.style.width = '400px';
+    document.body.style.height = 'auto';
+    document.body.style.maxHeight = 'none';
+    document.body.style.minHeight = '500px';
+
+    // Update button text and icon
+    expandBtn.textContent = '⛶ Expand';
+  }
 }
 
 // Functions are now handled via event delegation, no need for global assignment
