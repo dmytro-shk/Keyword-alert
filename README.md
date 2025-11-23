@@ -10,8 +10,8 @@ This extension was originally designed to help dispatchers manage high-volume op
 
 **The Solution**: Set up keyword alerts for each account:
 
-- **Main Trigger**: "ABC Company" (detects when you're working on this specific account)
-- **Secondary Trigger**: "service request" OR "ticket creation" (detects when you're about to create a ticket)
+- **Main Trigger**: "service request" OR "ticket creation" (detects when you're about to create a ticket)
+- **Secondary Trigger**: "ABC Company" (detects when you're working on this specific account)
 - **Alert Message**: "⚠️ REMINDER: ABC Company requires 24-hour advance appointment scheduling. Check customer availability before confirming visit."
 
 Now, whenever you're creating a ticket for ABC Company, you'll automatically get a reminder about their special requirements - no more missed appointments or unhappy customers!
