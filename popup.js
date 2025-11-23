@@ -369,8 +369,9 @@ function clearMainTriggerForm() {
 }
 
 function loadMainTriggers() {
-  chrome.storage.local.get(['mainTriggers'], res => {
+  chrome.storage.local.get(['mainTriggers', 'alerts'], res => {
     const mainTriggers = res.mainTriggers || [];
+    const alerts = res.alerts || [];
     console.log('Loading', mainTriggers.length, 'main triggers');
 
     if (!mainTriggersList) {
@@ -399,12 +400,24 @@ function loadMainTriggers() {
         k.operator ? `${k.keyword} ${k.operator}` : k.keyword
       ).join(' ');
 
+      // Check if this trigger is used in any alerts
+      const alertsUsingTrigger = alerts.filter(alert =>
+        alert.mainTriggers.includes(trigger.id)
+      );
+      const isInUse = alertsUsingTrigger.length > 0;
+      const usageBadge = isInUse
+        ? `<span class="usage-badge" title="Used in ${alertsUsingTrigger.length} alert(s)">🔗 ${alertsUsingTrigger.length}</span>`
+        : '';
+
       div.innerHTML = `
-        <div class="item-title">${trigger.name}</div>
+        <div class="item-header">
+          <div class="item-title">${trigger.name}</div>
+          ${usageBadge}
+        </div>
         <div class="item-keywords">${keywordText}</div>
         <div class="item-actions">
           <button class="btn btn-secondary edit-main-trigger" data-trigger-id="${trigger.id}">Edit</button>
-          <button class="btn btn-danger delete-main-trigger" data-trigger-id="${trigger.id}">Delete</button>
+          <button class="btn btn-danger delete-main-trigger" data-trigger-id="${trigger.id}" ${isInUse ? 'title="Cannot delete - trigger is in use"' : ''}>Delete</button>
         </div>
       `;
 
@@ -414,11 +427,30 @@ function loadMainTriggers() {
 }
 
 function deleteMainTrigger(triggerId) {
-  if (!confirm('Are you sure you want to delete this main trigger?')) return;
+  // Check if this trigger is used in any alerts before deletion
+  chrome.storage.local.get(['alerts', 'mainTriggers'], res => {
+    const alerts = res.alerts || [];
+    const mainTriggers = res.mainTriggers || [];
+    const trigger = mainTriggers.find(t => t.id === triggerId);
 
-  chrome.storage.local.get(['mainTriggers'], res => {
-    const mainTriggers = (res.mainTriggers || []).filter(t => t.id !== triggerId);
-    chrome.storage.local.set({ mainTriggers }, () => {
+    if (!trigger) return;
+
+    // Find alerts that use this main trigger
+    const alertsUsingTrigger = alerts.filter(alert =>
+      alert.mainTriggers.includes(triggerId)
+    );
+
+    if (alertsUsingTrigger.length > 0) {
+      const alertMessages = alertsUsingTrigger.map(alert => `• "${alert.message}"`).join('\n');
+      alert(`Cannot delete "${trigger.name}" because it is being used in ${alertsUsingTrigger.length} alert(s):\n\n${alertMessages}\n\nPlease remove or edit these alerts first.`);
+      return;
+    }
+
+    // Proceed with deletion if not in use
+    if (!confirm(`Are you sure you want to delete the main trigger "${trigger.name}"?`)) return;
+
+    const updatedMainTriggers = mainTriggers.filter(t => t.id !== triggerId);
+    chrome.storage.local.set({ mainTriggers: updatedMainTriggers }, () => {
       loadMainTriggers();
       loadTriggersForAlerts();
     });
@@ -525,8 +557,9 @@ function clearSecondaryTriggerForm() {
 }
 
 function loadSecondaryTriggers() {
-  chrome.storage.local.get(['secondaryTriggers'], res => {
+  chrome.storage.local.get(['secondaryTriggers', 'alerts'], res => {
     const secondaryTriggers = res.secondaryTriggers || [];
+    const alerts = res.alerts || [];
     secondaryTriggersList.innerHTML = '';
 
     if (secondaryTriggers.length === 0) {
@@ -548,12 +581,24 @@ function loadSecondaryTriggers() {
         k.operator ? `${k.keyword} ${k.operator}` : k.keyword
       ).join(' ');
 
+      // Check if this trigger is used in any alerts
+      const alertsUsingTrigger = alerts.filter(alert =>
+        alert.secondaryTriggers.includes(trigger.id)
+      );
+      const isInUse = alertsUsingTrigger.length > 0;
+      const usageBadge = isInUse
+        ? `<span class="usage-badge" title="Used in ${alertsUsingTrigger.length} alert(s)">🔗 ${alertsUsingTrigger.length}</span>`
+        : '';
+
       div.innerHTML = `
-        <div class="item-title">${trigger.name}</div>
+        <div class="item-header">
+          <div class="item-title">${trigger.name}</div>
+          ${usageBadge}
+        </div>
         <div class="item-keywords">${keywordText}</div>
         <div class="item-actions">
           <button class="btn btn-secondary edit-secondary-trigger" data-trigger-id="${trigger.id}">Edit</button>
-          <button class="btn btn-danger delete-secondary-trigger" data-trigger-id="${trigger.id}">Delete</button>
+          <button class="btn btn-danger delete-secondary-trigger" data-trigger-id="${trigger.id}" ${isInUse ? 'title="Cannot delete - trigger is in use"' : ''}>Delete</button>
         </div>
       `;
       secondaryTriggersList.appendChild(div);
@@ -562,11 +607,30 @@ function loadSecondaryTriggers() {
 }
 
 function deleteSecondaryTrigger(triggerId) {
-  if (!confirm('Are you sure you want to delete this secondary trigger?')) return;
+  // Check if this trigger is used in any alerts before deletion
+  chrome.storage.local.get(['alerts', 'secondaryTriggers'], res => {
+    const alerts = res.alerts || [];
+    const secondaryTriggers = res.secondaryTriggers || [];
+    const trigger = secondaryTriggers.find(t => t.id === triggerId);
 
-  chrome.storage.local.get(['secondaryTriggers'], res => {
-    const secondaryTriggers = (res.secondaryTriggers || []).filter(t => t.id !== triggerId);
-    chrome.storage.local.set({ secondaryTriggers }, () => {
+    if (!trigger) return;
+
+    // Find alerts that use this secondary trigger
+    const alertsUsingTrigger = alerts.filter(alert =>
+      alert.secondaryTriggers.includes(triggerId)
+    );
+
+    if (alertsUsingTrigger.length > 0) {
+      const alertMessages = alertsUsingTrigger.map(alert => `• "${alert.message}"`).join('\n');
+      alert(`Cannot delete "${trigger.name}" because it is being used in ${alertsUsingTrigger.length} alert(s):\n\n${alertMessages}\n\nPlease remove or edit these alerts first.`);
+      return;
+    }
+
+    // Proceed with deletion if not in use
+    if (!confirm(`Are you sure you want to delete the secondary trigger "${trigger.name}"?`)) return;
+
+    const updatedSecondaryTriggers = secondaryTriggers.filter(t => t.id !== triggerId);
+    chrome.storage.local.set({ secondaryTriggers: updatedSecondaryTriggers }, () => {
       loadSecondaryTriggers();
       loadTriggersForAlerts();
     });
@@ -1187,6 +1251,9 @@ function toggleExpanded() {
     document.body.style.maxHeight = maxHeight + 'px';
     document.body.style.minHeight = 'auto';
 
+    // Add expanded class to body for CSS-based responsive scrollable containers
+    document.body.classList.add('expanded');
+
     // Update button text and icon
     expandBtn.textContent = '🗗 Collapse';
   } else {
@@ -1195,6 +1262,9 @@ function toggleExpanded() {
     document.body.style.height = 'auto';
     document.body.style.maxHeight = 'none';
     document.body.style.minHeight = '500px';
+
+    // Remove expanded class to reset scrollable containers
+    document.body.classList.remove('expanded');
 
     // Update button text and icon
     expandBtn.textContent = '⛶ Expand';

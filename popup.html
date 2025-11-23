@@ -396,6 +396,21 @@
       .scrollable {
         max-height: 200px;
         overflow-y: auto;
+        transition: max-height 0.3s ease;
+      }
+
+      /* Expanded state styles */
+      body.expanded .scrollable {
+        max-height: 450px;
+      }
+
+      /* Make the tab content areas more flexible in expanded mode */
+      body.expanded .tab-content {
+        min-height: 500px;
+      }
+
+      body.expanded .section {
+        margin-bottom: 20px;
       }
 
       .scrollable::-webkit-scrollbar {
@@ -555,6 +570,30 @@
       .create-button svg {
         width: 16px;
         height: 16px;
+      }
+
+      /* Usage badge styles */
+      .item-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .usage-badge {
+        background: var(--warning);
+        color: white;
+        font-size: 10px;
+        font-weight: 600;
+        padding: 2px 6px;
+        border-radius: 10px;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+
+      .usage-badge:hover {
+        background: #FF8C00;
+        cursor: help;
       }
     </style>
   </head>
