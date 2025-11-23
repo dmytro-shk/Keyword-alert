@@ -456,6 +456,106 @@
         border-color: var(--primary);
         transform: translateY(-1px);
       }
+
+      /* Modal Styles */
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: none;
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .modal-overlay.active {
+        display: flex;
+      }
+
+      .modal {
+        background: var(--background);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-hover);
+        width: 90%;
+        max-width: 500px;
+        max-height: 80vh;
+        overflow: hidden;
+        transform: scale(0.9);
+        transition: transform 0.2s ease;
+      }
+
+      .modal-overlay.active .modal {
+        transform: scale(1);
+      }
+
+      .modal-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--surface);
+      }
+
+      .modal-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0;
+      }
+
+      .modal-close {
+        background: none;
+        border: none;
+        font-size: 20px;
+        cursor: pointer;
+        color: var(--text-secondary);
+        padding: 4px;
+        line-height: 1;
+        border-radius: 4px;
+      }
+
+      .modal-close:hover {
+        background: var(--surface);
+        color: var(--text-primary);
+      }
+
+      .modal-body {
+        padding: 20px;
+        max-height: 60vh;
+        overflow-y: auto;
+      }
+
+      .create-button {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 16px;
+        padding: 10px 16px;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: var(--radius-small);
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        width: 100%;
+        justify-content: center;
+      }
+
+      .create-button:hover {
+        background: var(--primary-hover);
+        transform: translateY(-1px);
+      }
+
+      .create-button svg {
+        width: 16px;
+        height: 16px;
+      }
     </style>
   </head>
   <body>
@@ -478,35 +578,10 @@
 
     <!-- Main Triggers Tab -->
     <div id="main-triggers-content" class="tab-content active">
-      <div class="section">
-        <div class="section-title">Create Main Trigger</div>
-        <div class="section-subtitle">Main triggers detect specific pages on websites. Example: "New work order" AND "Work order summary" to detect a work order creation page.</div>
-
-        <div class="form-group">
-          <label class="form-label">Trigger Name</label>
-          <input type="text" id="main-trigger-name" class="form-input" placeholder="e.g., New work order creation">
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Keywords</label>
-          <div id="main-keyword-container">
-            <div class="keyword-row">
-              <input type="text" class="keyword-input" placeholder="Enter keyword">
-              <select class="operator-select">
-                <option value="AND">AND</option>
-                <option value="OR">OR</option>
-              </select>
-              <button class="btn btn-danger btn-icon">×</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="actions">
-          <button id="add-main-keyword" class="btn btn-secondary">Add Keyword</button>
-          <button id="save-main-trigger" class="btn btn-primary">Save Trigger</button>
-          <button id="cancel-main-edit" class="btn btn-secondary" style="display: none;">Cancel</button>
-        </div>
-      </div>
+      <button id="create-main-trigger-btn" class="create-button">
+        <span>➕</span>
+        Create Main Trigger
+      </button>
 
       <div class="section">
         <div class="section-title">Saved Main Triggers</div>
@@ -514,7 +589,7 @@
           <div class="empty-state">
             <div class="empty-state-icon">⚡</div>
             <div class="empty-state-text">No main triggers yet</div>
-            <div class="empty-state-subtext">Create your first trigger above</div>
+            <div class="empty-state-subtext">Click "Create Main Trigger" above</div>
           </div>
         </div>
       </div>
@@ -522,35 +597,10 @@
 
     <!-- Secondary Triggers Tab -->
     <div id="secondary-triggers-content" class="tab-content">
-      <div class="section">
-        <div class="section-title">Create Secondary Trigger</div>
-        <div class="section-subtitle">Secondary triggers detect specific content on pages. Example: "Google" AND "Seattle" to detect specific accounts or locations.</div>
-
-        <div class="form-group">
-          <label class="form-label">Trigger Name</label>
-          <input type="text" id="secondary-trigger-name" class="form-input" placeholder="e.g., Google, SEA/BLV">
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Keywords</label>
-          <div id="secondary-keyword-container">
-            <div class="keyword-row">
-              <input type="text" class="keyword-input" placeholder="Enter keyword">
-              <select class="operator-select">
-                <option value="AND">AND</option>
-                <option value="OR">OR</option>
-              </select>
-              <button class="btn btn-danger btn-icon">×</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="actions">
-          <button id="add-secondary-keyword" class="btn btn-secondary">Add Keyword</button>
-          <button id="save-secondary-trigger" class="btn btn-primary">Save Trigger</button>
-          <button id="cancel-secondary-edit" class="btn btn-secondary" style="display: none;">Cancel</button>
-        </div>
-      </div>
+      <button id="create-secondary-trigger-btn" class="create-button">
+        <span>➕</span>
+        Create Secondary Trigger
+      </button>
 
       <div class="section">
         <div class="section-title">Saved Secondary Triggers</div>
@@ -558,7 +608,7 @@
           <div class="empty-state">
             <div class="empty-state-icon">🎯</div>
             <div class="empty-state-text">No secondary triggers yet</div>
-            <div class="empty-state-subtext">Create your first trigger above</div>
+            <div class="empty-state-subtext">Click "Create Secondary Trigger" above</div>
           </div>
         </div>
       </div>
@@ -566,37 +616,10 @@
 
     <!-- Alerts Tab -->
     <div id="alerts-content" class="tab-content">
-      <div class="section">
-        <div class="section-title">Create Alert</div>
-        <div class="section-subtitle">Combine triggers with alert messages to create notifications when conditions are met.</div>
-
-        <div class="form-group">
-          <label class="form-label">Main Triggers</label>
-          <div id="alert-main-triggers" class="checkbox-group">
-            <div class="empty-state-text">No main triggers available</div>
-            <div class="empty-state-subtext">Create them in the Main Triggers tab</div>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Secondary Triggers <span style="color: var(--text-secondary);">(optional)</span></label>
-          <div id="alert-secondary-triggers" class="checkbox-group">
-            <div class="empty-state-text">No secondary triggers available</div>
-            <div class="empty-state-subtext">Create them in the Secondary Triggers tab</div>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Alert Message</label>
-          <textarea id="alert-message" class="form-input" rows="3" placeholder="Enter the message to show when triggers match"></textarea>
-        </div>
-
-        <div class="actions">
-          <button id="save-alert" class="btn btn-primary">Save Alert</button>
-          <button id="cancel-alert-edit" class="btn btn-secondary" style="display: none;">Cancel</button>
-          <button id="clear-alert-form" class="btn btn-secondary">Clear Form</button>
-        </div>
-      </div>
+      <button id="create-alert-btn" class="create-button">
+        <span>➕</span>
+        Create Alert
+      </button>
 
       <div class="section">
         <div class="section-title">Active Alerts</div>
@@ -623,7 +646,123 @@
           <div class="empty-state">
             <div class="empty-state-icon">🔔</div>
             <div class="empty-state-text">No alerts configured</div>
-            <div class="empty-state-subtext">Create your first alert above</div>
+            <div class="empty-state-subtext">Click "Create Alert" above</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Trigger Modal -->
+    <div id="main-trigger-modal" class="modal-overlay">
+      <div class="modal">
+        <div class="modal-header">
+          <h3 class="modal-title">Create Main Trigger</h3>
+          <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="section-subtitle">Main triggers detect specific pages on websites. Example: "New work order" AND "Work order summary" to detect a work order creation page.</div>
+
+          <div class="form-group">
+            <label class="form-label">Trigger Name</label>
+            <input type="text" id="main-trigger-name" class="form-input" placeholder="e.g., New work order creation">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Keywords</label>
+            <div id="main-keyword-container">
+              <div class="keyword-row">
+                <input type="text" class="keyword-input" placeholder="Enter keyword">
+                <select class="operator-select">
+                  <option value="AND">AND</option>
+                  <option value="OR">OR</option>
+                </select>
+                <button class="btn btn-danger btn-remove-keyword">×</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button id="add-main-keyword" class="btn btn-secondary">Add Keyword</button>
+            <button id="save-main-trigger" class="btn btn-primary">Save Trigger</button>
+            <button id="cancel-main-edit" class="btn btn-secondary" style="display: none;">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Secondary Trigger Modal -->
+    <div id="secondary-trigger-modal" class="modal-overlay">
+      <div class="modal">
+        <div class="modal-header">
+          <h3 class="modal-title">Create Secondary Trigger</h3>
+          <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="section-subtitle">Secondary triggers detect specific content on pages. Example: "Google" AND "Seattle" to detect specific accounts or locations.</div>
+
+          <div class="form-group">
+            <label class="form-label">Trigger Name</label>
+            <input type="text" id="secondary-trigger-name" class="form-input" placeholder="e.g., Google, SEA/BLV">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Keywords</label>
+            <div id="secondary-keyword-container">
+              <div class="keyword-row">
+                <input type="text" class="keyword-input" placeholder="Enter keyword">
+                <select class="operator-select">
+                  <option value="AND">AND</option>
+                  <option value="OR">OR</option>
+                </select>
+                <button class="btn btn-danger btn-remove-keyword">×</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button id="add-secondary-keyword" class="btn btn-secondary">Add Keyword</button>
+            <button id="save-secondary-trigger" class="btn btn-primary">Save Trigger</button>
+            <button id="cancel-secondary-edit" class="btn btn-secondary" style="display: none;">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alert Modal -->
+    <div id="alert-modal" class="modal-overlay">
+      <div class="modal">
+        <div class="modal-header">
+          <h3 class="modal-title">Create Alert</h3>
+          <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="section-subtitle">Combine triggers with alert messages to create notifications when conditions are met.</div>
+
+          <div class="form-group">
+            <label class="form-label">Main Triggers</label>
+            <div id="alert-main-triggers" class="checkbox-group">
+              <div class="empty-state-text">No main triggers available</div>
+              <div class="empty-state-subtext">Create them in the Main Triggers tab</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Secondary Triggers <span style="color: var(--text-secondary);">(optional)</span></label>
+            <div id="alert-secondary-triggers" class="checkbox-group">
+              <div class="empty-state-text">No secondary triggers available</div>
+              <div class="empty-state-subtext">Create them in the Secondary Triggers tab</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Alert Message</label>
+            <textarea id="alert-message" class="form-input" rows="3" placeholder="Enter the message to show when triggers match"></textarea>
+          </div>
+
+          <div class="actions">
+            <button id="save-alert" class="btn btn-primary">Save Alert</button>
+            <button id="cancel-alert-edit" class="btn btn-secondary" style="display: none;">Cancel</button>
+            <button id="clear-alert-form" class="btn btn-secondary">Clear Form</button>
           </div>
         </div>
       </div>

@@ -41,6 +41,14 @@ const importBtn = document.getElementById('import-btn');
 const importFile = document.getElementById('import-file');
 const clearAllBtn = document.getElementById('clear-all-btn');
 
+// Modal elements
+const createMainTriggerBtn = document.getElementById('create-main-trigger-btn');
+const createSecondaryTriggerBtn = document.getElementById('create-secondary-trigger-btn');
+const createAlertBtn = document.getElementById('create-alert-btn');
+const mainTriggerModal = document.getElementById('main-trigger-modal');
+const secondaryTriggerModal = document.getElementById('secondary-trigger-modal');
+const alertModal = document.getElementById('alert-modal');
+
 // Initialize app
 function init() {
   setupTabs();
@@ -110,6 +118,17 @@ function setupEventHandlers() {
   });
 
   clearAlertFilterBtn.addEventListener('click', clearAllFilters);
+
+  // Modal functionality
+  createMainTriggerBtn.addEventListener('click', () => openModal(mainTriggerModal));
+  createSecondaryTriggerBtn.addEventListener('click', () => openModal(secondaryTriggerModal));
+  createAlertBtn.addEventListener('click', () => {
+    openModal(alertModal);
+    loadTriggersForAlerts(); // Load triggers when opening alert modal
+  });
+
+  // Modal close handlers
+  setupModalCloseHandlers();
 
   // Import/Export functionality
   expandBtn.addEventListener('click', toggleExpanded);
@@ -291,6 +310,7 @@ function saveMainTrigger() {
       clearMainTriggerForm();
       loadMainTriggers();
       loadTriggersForAlerts(); // Refresh alerts tab if open
+      closeModalAfterSave('main');
     });
   });
 }
@@ -325,8 +345,8 @@ function editMainTrigger(triggerId) {
         mainKeywordContainer.appendChild(row);
       });
 
-      // Switch to main triggers tab if not already there
-      document.querySelector('[data-tab="main-triggers"]').click();
+      // Open main trigger modal for editing
+      openModal(mainTriggerModal);
     }
   });
 }
@@ -446,6 +466,7 @@ function saveSecondaryTrigger() {
       clearSecondaryTriggerForm();
       loadSecondaryTriggers();
       loadTriggersForAlerts(); // Refresh alerts tab if open
+      closeModalAfterSave('secondary');
     });
   });
 }
@@ -480,8 +501,8 @@ function editSecondaryTrigger(triggerId) {
         secondaryKeywordContainer.appendChild(row);
       });
 
-      // Switch to secondary triggers tab if not already there
-      document.querySelector('[data-tab="secondary-triggers"]').click();
+      // Open secondary trigger modal for editing
+      openModal(secondaryTriggerModal);
     }
   });
 }
@@ -671,6 +692,7 @@ function saveAlert() {
       }
 
       loadAlerts();
+      closeModalAfterSave('alert');
     });
   });
 }
@@ -689,8 +711,8 @@ function editAlert(alertId) {
       // Load alert data into form
       alertMessageTextArea.value = alertToEdit.message;
 
-      // Switch to alerts tab if not already there
-      document.querySelector('[data-tab="alerts"]').click();
+      // Open alert modal for editing
+      openModal(alertModal);
 
       // Load triggers first, then check the appropriate ones
       loadTriggersForAlerts(() => {
@@ -1088,6 +1110,62 @@ function loadAllData() {
   loadSecondaryTriggers();
   loadAlerts();
   loadTriggersForAlerts();
+}
+
+// ===== MODAL FUNCTIONALITY =====
+
+function openModal(modal) {
+  modal.classList.add('active');
+  document.body.style.overflow = 'hidden'; // Prevent background scrolling
+}
+
+function closeModal(modal) {
+  modal.classList.remove('active');
+  document.body.style.overflow = ''; // Restore scrolling
+}
+
+function setupModalCloseHandlers() {
+  // Close buttons
+  document.querySelectorAll('.modal-close').forEach(closeBtn => {
+    closeBtn.addEventListener('click', (e) => {
+      const modal = e.target.closest('.modal-overlay');
+      closeModal(modal);
+    });
+  });
+
+  // Close on overlay click
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        closeModal(overlay);
+      }
+    });
+  });
+
+  // Close on Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const activeModal = document.querySelector('.modal-overlay.active');
+      if (activeModal) {
+        closeModal(activeModal);
+      }
+    }
+  });
+}
+
+// Function to close modals after successful saves
+function closeModalAfterSave(modalType) {
+  switch(modalType) {
+    case 'main':
+      closeModal(mainTriggerModal);
+      break;
+    case 'secondary':
+      closeModal(secondaryTriggerModal);
+      break;
+    case 'alert':
+      closeModal(alertModal);
+      break;
+  }
 }
 
 // ===== EXPAND FUNCTIONALITY =====
