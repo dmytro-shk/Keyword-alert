@@ -3,7 +3,7 @@
   "name": "Keyword Alert",
   "version": "1.0.0",
   "description": "Monitor websites for specific keywords and get instant alerts. Icon from Flaticon.",
-  "permissions": ["storage", "activeTab", "scripting", "webNavigation"],
+  "permissions": ["storage", "webNavigation"],
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
