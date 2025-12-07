@@ -49,6 +49,9 @@ const mainTriggerModal = document.getElementById('main-trigger-modal');
 const secondaryTriggerModal = document.getElementById('secondary-trigger-modal');
 const alertModal = document.getElementById('alert-modal');
 
+// Debug mode elements
+const debugModeCheckbox = document.getElementById('debug-mode-checkbox');
+
 // Initialize app
 function init() {
   setupTabs();
@@ -136,6 +139,10 @@ function setupEventHandlers() {
   importBtn.addEventListener('click', () => importFile.click());
   importFile.addEventListener('change', handleImport);
   clearAllBtn.addEventListener('click', clearAllData);
+
+  // Debug mode functionality
+  debugModeCheckbox.addEventListener('change', saveDebugModeSetting);
+  loadDebugModeSetting();
 
   // Keyword row removal (delegated events)
   mainKeywordContainer.addEventListener('click', (e) => {
@@ -1539,6 +1546,23 @@ function toggleExpanded() {
     // Update button text and icon
     expandBtn.textContent = '⛶ Expand';
   }
+}
+
+// ===== DEBUG MODE FUNCTIONS =====
+
+function saveDebugModeSetting() {
+  const debugMode = debugModeCheckbox.checked;
+  chrome.storage.local.set({ debugMode }, () => {
+    console.log('Debug mode setting saved:', debugMode);
+  });
+}
+
+function loadDebugModeSetting() {
+  chrome.storage.local.get(['debugMode'], (result) => {
+    const debugMode = result.debugMode || false;
+    debugModeCheckbox.checked = debugMode;
+    console.log('Debug mode setting loaded:', debugMode);
+  });
 }
 
 // Functions are now handled via event delegation, no need for global assignment
