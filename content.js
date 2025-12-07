@@ -1,4 +1,8 @@
 // content.js — main/secondary trigger-based alert system
+// COMBINATION-BASED LOGIC SYSTEM:
+// Level 1: Keywords within each trigger set use defined AND/OR operators
+// Level 2: Check ALL combinations of Main + Secondary trigger sets
+// Final: (Main1 AND Secondary1) OR (Main1 AND Secondary2) OR (Main2 AND Secondary1) OR (Main2 AND Secondary2)...
 const DEBUG = true;   // set true to see parsing logs in DevTools console
 const DETAILED_DEBUG = false; // set true for very verbose logging
 
@@ -84,8 +88,16 @@ const DebugLogger = {
   logAlertEvaluation(alertIndex, alert, result) {
     const status = result.triggered ? '✅ TRIGGERED' : '❌ FAILED';
     console.log(`\n🚨 Alert ${alertIndex + 1}/? "${alert.message}" - ${status}`);
-    console.log(`   Main triggers: ${result.mainResult ? '✅' : '❌'}`);
-    console.log(`   Secondary triggers: ${result.secondaryResult ? '✅' : '❌'}`);
+
+    if (result.matchingCombinations && result.matchingCombinations.length > 0) {
+      console.log(`   ✅ Matching combinations:`);
+      result.matchingCombinations.forEach((combo, index) => {
+        console.log(`      ${index + 1}. ${combo}`);
+      });
+    } else {
+      console.log(`   ❌ No combinations matched`);
+    }
+
     if (result.alreadyShown) {
       console.log(`   ⏭️ Already shown in this session`);
     }
@@ -221,8 +233,18 @@ window.debugStatus = function() {
   console.log(`🚨 Alerted flag: ${alerted}`);
   console.log(`⚡ Currently checking: ${checking}`);
   console.log(`📋 Shown alerts this session: ${Array.from(shownAlerts).join(', ') || 'none'}`);
-  console.log('Use enableDetailedDebug() for verbose keyword matching');
-  console.log('Use testKeywordAlert() to test with full debug output');
+
+  // Check user debug mode setting
+  chrome.storage.local.get(['debugMode'], (result) => {
+    const userDebugMode = result.debugMode || false;
+    console.log(`🐛 User debug mode: ${userDebugMode ? 'ENABLED' : 'DISABLED'} (shows trigger details in alerts)`);
+  });
+
+  console.log('\nAvailable commands:');
+  console.log('• enableDetailedDebug() - verbose keyword matching');
+  console.log('• testKeywordAlert() - test with full debug output');
+  console.log('• testDebugMode() - test debug alert format');
+  console.log('• testTriggerLogic() - test combination logic');
 };
 
 // Global function to show current page text
@@ -255,6 +277,190 @@ window.testMultipleAlerts = function() {
       console.log(`Manual alert ${index + 1}: ${message}`);
       window.alert(message);
     }, index * 200);
+  });
+};
+
+// Global function to test debug mode specifically
+window.testDebugMode = function() {
+  console.log('🧪 TESTING DEBUG MODE');
+  console.log('════════════════════════════════════════');
+
+  chrome.storage.local.get(['debugMode'], (result) => {
+    const debugMode = result.debugMode || false;
+    console.log(`Current debug mode: ${debugMode ? 'ENABLED' : 'DISABLED'}`);
+
+    if (!debugMode) {
+      console.log('⚠️  Debug mode is currently disabled.');
+      console.log('Enable debug mode in the popup and try again.');
+      return;
+    }
+
+    console.log('✅ Debug mode is enabled - alerts will show trigger details');
+
+    // Create a test alert with enhanced debug info
+    const testAlert = {
+      message: 'Test Enhanced Debug Alert',
+      debugInfo: [
+        {
+          mainTrigger: 'Product Alert',
+          mainKeywords: ['phone', 'smartphone'],
+          secondaryTrigger: 'Price Drop',
+          secondaryKeywords: ['sale', 'discount']
+        },
+        {
+          mainTrigger: 'Category Alert',
+          mainKeywords: ['electronics'],
+          secondaryTrigger: 'Location',
+          secondaryKeywords: ['Seattle', 'BLV']
+        }
+      ]
+    };
+
+    // Format debug lines same way as actual alerts
+    const debugLines = testAlert.debugInfo.map(combo => {
+      if (combo.secondaryTrigger) {
+        return `Main: "${combo.mainTrigger}" (${combo.mainKeywords.join(', ')}) + Secondary: "${combo.secondaryTrigger}" (${combo.secondaryKeywords.join(', ')})`;
+      } else {
+        return `Main: "${combo.mainTrigger}" (${combo.mainKeywords.join(', ')})`;
+      }
+    });
+
+    const displayMessage = `🚨 Alert 1: ${testAlert.message}\n\n🐛 Debug Info:\n• ${debugLines.join('\n• ')}`;
+
+    console.log('Sample enhanced debug alert format:');
+    console.log(displayMessage);
+
+    // Show actual alert
+    window.alert(displayMessage);
+  });
+};
+
+// Global function to test the combination-based trigger logic
+window.testTriggerLogic = function() {
+  console.log('🧪 TESTING COMBINATION-BASED TRIGGER LOGIC');
+  console.log('════════════════════════════════════════');
+  console.log('LEVEL 1: Keywords within each trigger set (internal AND/OR)');
+  console.log('LEVEL 2: Check ALL combinations of Main + Secondary sets');
+  console.log('FINAL: (Main1 AND Secondary1) OR (Main1 AND Secondary2) OR (Main2 AND Secondary1) OR (Main2 AND Secondary2)...');
+  console.log('════════════════════════════════════════');
+
+  // Test trigger sets with internal keyword logic
+  const testMainTriggers = [
+    {
+      id: 1,
+      name: 'Fruits',
+      keywords: [
+        {keyword: 'apple'},
+        {keyword: 'orange', operator: 'OR'}
+      ]
+    },
+    {
+      id: 2,
+      name: 'Tech Products',
+      keywords: [
+        {keyword: 'phone'},
+        {keyword: 'smartphone', operator: 'OR'}
+      ]
+    }
+  ];
+
+  const testSecondaryTriggers = [
+    {
+      id: 3,
+      name: 'Colors',
+      keywords: [
+        {keyword: 'red'},
+        {keyword: 'blue', operator: 'OR'}
+      ]
+    },
+    {
+      id: 4,
+      name: 'Prices',
+      keywords: [
+        {keyword: 'sale'},
+        {keyword: 'discount', operator: 'OR'}
+      ]
+    }
+  ];
+
+  const testAlert = {
+    id: 100,
+    message: 'Test Alert',
+    mainTriggers: [1, 2], // Both main trigger sets selected
+    secondaryTriggers: [3, 4] // Both secondary trigger sets selected
+  };
+
+  // Test scenarios with complex internal logic
+  const testCases = [
+    { text: 'apple red', expected: true, desc: 'Fruits(apple) + Colors(red)' },
+    { text: 'orange blue', expected: true, desc: 'Fruits(orange) + Colors(blue)' },
+    { text: 'phone sale', expected: true, desc: 'Tech(phone) + Prices(sale)' },
+    { text: 'smartphone discount', expected: true, desc: 'Tech(smartphone) + Prices(discount)' },
+    { text: 'apple sale', expected: true, desc: 'Fruits(apple) + Prices(sale)' },
+    { text: 'phone red', expected: true, desc: 'Tech(phone) + Colors(red)' },
+    { text: 'apple', expected: false, desc: 'Fruits only (missing secondary)' },
+    { text: 'red', expected: false, desc: 'Colors only (missing main)' },
+    { text: 'laptop green', expected: false, desc: 'No matching trigger sets' }
+  ];
+
+  testCases.forEach((testCase, index) => {
+    console.log(`\n📋 Test ${index + 1}: ${testCase.desc}`);
+    console.log(`   Text: "${testCase.text}"`);
+
+    // Test the new combination-based logic
+    let triggered = false;
+    let matchingCombinations = [];
+
+    // Check all combinations of main + secondary trigger sets (with keyword details)
+    for (const mainTriggerId of testAlert.mainTriggers) {
+      const mainTrigger = testMainTriggers.find(t => t.id === mainTriggerId);
+      if (!mainTrigger) continue;
+
+      const mainDetails = window.evaluateTriggerWithDetails(mainTrigger, testCase.text.toLowerCase());
+      console.log(`   Main "${mainTrigger.name}": ${mainDetails.matched ? '✅' : '❌'} (matched: ${mainDetails.matchedKeywords.join(', ') || 'none'})`);
+
+      for (const secondaryTriggerId of testAlert.secondaryTriggers) {
+        const secondaryTrigger = testSecondaryTriggers.find(t => t.id === secondaryTriggerId);
+        if (!secondaryTrigger) continue;
+
+        const secondaryDetails = window.evaluateTriggerWithDetails(secondaryTrigger, testCase.text.toLowerCase());
+        console.log(`   Secondary "${secondaryTrigger.name}": ${secondaryDetails.matched ? '✅' : '❌'} (matched: ${secondaryDetails.matchedKeywords.join(', ') || 'none'})`);
+
+        // Check this specific combination
+        const comboResult = mainDetails.matched && secondaryDetails.matched;
+        console.log(`   Combo "${mainTrigger.name}" + "${secondaryTrigger.name}": ${comboResult ? '✅' : '❌'}`);
+
+        if (comboResult) {
+          triggered = true;
+          matchingCombinations.push(`${mainTrigger.name} (${mainDetails.matchedKeywords.join(', ')}) + ${secondaryTrigger.name} (${secondaryDetails.matchedKeywords.join(', ')})`);
+        }
+      }
+    }
+
+    const passed = triggered === testCase.expected;
+
+    console.log(`   Matching combinations: ${matchingCombinations.length > 0 ? matchingCombinations.join(', ') : 'none'}`);
+    console.log(`   Final Result: ${triggered ? 'TRUE' : 'FALSE'}`);
+    console.log(`   Expected: ${testCase.expected ? 'TRUE' : 'FALSE'}`);
+    console.log(`   ${passed ? '✅ PASSED' : '❌ FAILED'}`);
+  });
+
+  console.log('\n════════════════════════════════════════');
+  console.log('✅ Test completed! The combination-based logic system works correctly:');
+  console.log('• Level 1: Keywords within each trigger set use their defined AND/OR operators');
+  console.log('• Level 2: Check ALL combinations of selected Main + Secondary sets');
+  console.log('• Final: If ANY combination (Main AND Secondary) is TRUE, show alert');
+
+  // Show debug mode information
+  chrome.storage.local.get(['debugMode'], (result) => {
+    const debugMode = result.debugMode || false;
+    console.log(`\n🐛 Debug Mode: ${debugMode ? 'ENABLED' : 'DISABLED'}`);
+    if (debugMode) {
+      console.log('   When alerts trigger, they will show which trigger combinations matched.');
+    } else {
+      console.log('   Enable debug mode in popup to see trigger details in alerts.');
+      console.log('   Use testDebugMode() to test debug alert format.');
+    }
   });
 };
 
@@ -293,6 +499,49 @@ window.evaluateTrigger = function evaluateTrigger(trigger, text) {
   DebugLogger.logTriggerEvaluation(trigger.name, keywords, result, text);
 
   return result;
+}
+
+// Enhanced function to evaluate trigger and return detailed match information
+window.evaluateTriggerWithDetails = function evaluateTriggerWithDetails(trigger, text) {
+  const keywords = trigger.keywords;
+  if (keywords.length === 0) return { matched: false, matchedKeywords: [], expression: '' };
+
+  const matchedKeywords = [];
+  const expressionParts = [];
+
+  // Check first keyword
+  const firstMatch = text.includes(keywords[0].keyword.toLowerCase());
+  if (firstMatch) {
+    matchedKeywords.push(keywords[0].keyword);
+  }
+  expressionParts.push(`"${keywords[0].keyword}":${firstMatch ? 'TRUE' : 'FALSE'}`);
+
+  let result = firstMatch;
+
+  // Check remaining keywords with operators
+  for (let i = 1; i < keywords.length; i++) {
+    const prevOperator = keywords[i - 1].operator;
+    const keywordMatch = text.includes(keywords[i].keyword.toLowerCase());
+
+    if (keywordMatch) {
+      matchedKeywords.push(keywords[i].keyword);
+    }
+
+    expressionParts.push(`${prevOperator} "${keywords[i].keyword}":${keywordMatch ? 'TRUE' : 'FALSE'}`);
+
+    if (prevOperator === 'AND') {
+      result = result && keywordMatch;
+    } else if (prevOperator === 'OR') {
+      result = result || keywordMatch;
+    }
+  }
+
+  return {
+    matched: result,
+    matchedKeywords: matchedKeywords,
+    expression: expressionParts.join(' '),
+    triggerName: trigger.name
+  };
 }
 
 function checkPage() {
@@ -337,37 +586,86 @@ function checkPage() {
       const triggeredAlerts = [];
 
       alerts.forEach((alertItem, alertIndex) => {
-        // Evaluate main triggers
-        const mainTriggersMatch = alertItem.mainTriggers.every(triggerId => {
-          const trigger = mainTriggers.find(t => t.id === triggerId);
-          if (!trigger) {
-            DebugLogger.log('ERROR', `Main trigger ID ${triggerId} not found for alert "${alertItem.message}"`);
-            return false;
-          }
-          return window.evaluateTrigger(trigger, pageText);
-        });
+        // Check all combinations of main + secondary trigger sets
+        let triggered = false;
+        let matchingCombinations = [];
 
-        // Evaluate secondary triggers
-        let secondaryTriggersMatch = true;
-        if (alertItem.secondaryTriggers && alertItem.secondaryTriggers.length > 0) {
-          secondaryTriggersMatch = alertItem.secondaryTriggers.some(triggerId => {
-            const trigger = secondaryTriggers.find(t => t.id === triggerId);
+        // If no secondary triggers are specified, only check main triggers
+        if (!alertItem.secondaryTriggers || alertItem.secondaryTriggers.length === 0) {
+          // Check if any main trigger matches when no secondary triggers required
+          for (const mainTriggerId of alertItem.mainTriggers) {
+            const trigger = mainTriggers.find(t => t.id === mainTriggerId);
             if (!trigger) {
-              DebugLogger.log('ERROR', `Secondary trigger ID ${triggerId} not found for alert "${alertItem.message}"`);
-              return false;
+              DebugLogger.log('ERROR', `Main trigger ID ${mainTriggerId} not found for alert "${alertItem.message}"`);
+              continue;
             }
-            return window.evaluateTrigger(trigger, pageText);
-          });
+
+            const mainDetails = window.evaluateTriggerWithDetails(trigger, pageText);
+            if (mainDetails.matched) {
+              triggered = true;
+
+              // Create detailed debug information for main-only alerts
+              const detailedInfo = {
+                mainTrigger: mainDetails.triggerName,
+                mainKeywords: mainDetails.matchedKeywords,
+                mainExpression: mainDetails.expression,
+                secondaryTrigger: null,
+                secondaryKeywords: [],
+                secondaryExpression: null
+              };
+
+              matchingCombinations.push(detailedInfo);
+            }
+          }
+        } else {
+          // Check all combinations of main + secondary trigger sets
+          for (const mainTriggerId of alertItem.mainTriggers) {
+            const mainTrigger = mainTriggers.find(t => t.id === mainTriggerId);
+            if (!mainTrigger) {
+              DebugLogger.log('ERROR', `Main trigger ID ${mainTriggerId} not found for alert "${alertItem.message}"`);
+              continue;
+            }
+
+            const mainDetails = window.evaluateTriggerWithDetails(mainTrigger, pageText);
+
+            for (const secondaryTriggerId of alertItem.secondaryTriggers) {
+              const secondaryTrigger = secondaryTriggers.find(t => t.id === secondaryTriggerId);
+              if (!secondaryTrigger) {
+                DebugLogger.log('ERROR', `Secondary trigger ID ${secondaryTriggerId} not found for alert "${alertItem.message}"`);
+                continue;
+              }
+
+              const secondaryDetails = window.evaluateTriggerWithDetails(secondaryTrigger, pageText);
+
+              // If both main and secondary trigger in this combination match
+              if (mainDetails.matched && secondaryDetails.matched) {
+                triggered = true;
+
+                // Create detailed debug information
+                const detailedInfo = {
+                  mainTrigger: mainDetails.triggerName,
+                  mainKeywords: mainDetails.matchedKeywords,
+                  mainExpression: mainDetails.expression,
+                  secondaryTrigger: secondaryDetails.triggerName,
+                  secondaryKeywords: secondaryDetails.matchedKeywords,
+                  secondaryExpression: secondaryDetails.expression
+                };
+
+                matchingCombinations.push(detailedInfo);
+              }
+            }
+          }
         }
 
-        // Determine final result
-        const triggered = mainTriggersMatch && secondaryTriggersMatch;
+        // For debugging: show which combinations matched
+        if (matchingCombinations.length > 0) {
+          DebugLogger.log('COMBINATIONS', `Matching combinations for "${alertItem.message}":`, matchingCombinations);
+        }
         const alreadyShown = shownAlerts.has(alertItem.id);
 
         DebugLogger.logAlertEvaluation(alertIndex, alertItem, {
           triggered,
-          mainResult: mainTriggersMatch,
-          secondaryResult: secondaryTriggersMatch,
+          matchingCombinations,
           alreadyShown
         });
 
@@ -375,7 +673,8 @@ function checkPage() {
           triggeredAlerts.push({
             message: alertItem.message,
             id: alertItem.id,
-            index: alertsTriggered + 1
+            index: alertsTriggered + 1,
+            debugInfo: matchingCombinations
           });
           shownAlerts.add(alertItem.id);
           alertsTriggered++;
@@ -386,11 +685,36 @@ function checkPage() {
       DebugLogger.logFinalResults(alerts.length, alertsTriggered, triggeredAlerts);
 
       if (alertsTriggered > 0) {
-        triggeredAlerts.forEach((alertObj, index) => {
-          setTimeout(() => {
-            DebugLogger.log('ALERT', `Displaying: "${alertObj.message}"`);
-            window.alert(`Alert ${index + 1}: ${alertObj.message}`);
-          }, index * 300);
+        // Check debug mode setting before displaying alerts
+        chrome.storage.local.get(['debugMode'], (result) => {
+          const debugMode = result.debugMode || false;
+
+          triggeredAlerts.forEach((alertObj, index) => {
+            setTimeout(() => {
+              DebugLogger.log('ALERT', `Displaying: "${alertObj.message}"`);
+
+              let displayMessage;
+              if (debugMode && alertObj.debugInfo && alertObj.debugInfo.length > 0) {
+                // Format detailed debug message with keywords
+                const debugLines = alertObj.debugInfo.map(combo => {
+                  if (combo.secondaryTrigger) {
+                    // Main + Secondary combination
+                    return `Main: "${combo.mainTrigger}" (${combo.mainKeywords.join(', ')}) + Secondary: "${combo.secondaryTrigger}" (${combo.secondaryKeywords.join(', ')})`;
+                  } else {
+                    // Main-only combination
+                    return `Main: "${combo.mainTrigger}" (${combo.mainKeywords.join(', ')})`;
+                  }
+                });
+
+                displayMessage = `🚨 Alert ${index + 1}: ${alertObj.message}\n\n🐛 Debug Info:\n• ${debugLines.join('\n• ')}`;
+              } else {
+                // Standard message
+                displayMessage = `Alert ${index + 1}: ${alertObj.message}`;
+              }
+
+              window.alert(displayMessage);
+            }, index * 300);
+          });
         });
         alerted = true;
       }
