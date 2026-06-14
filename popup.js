@@ -84,11 +84,24 @@ function init() {
 
 }
 
+function hasUnsavedChanges() {
+  const activeModal = document.querySelector('.modal-overlay.active');
+  if (!activeModal) return false;
+  return Array.from(activeModal.querySelectorAll('input[type="text"], textarea'))
+    .some(el => el.value.trim() !== '');
+}
+
 // Tab switching functionality
 function setupTabs() {
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
       const targetTab = tab.dataset.tab;
+
+      if (hasUnsavedChanges()) {
+        if (!confirm('You have unsaved changes. Switch tabs and discard them?')) return;
+        const activeModal = document.querySelector('.modal-overlay.active');
+        if (activeModal) closeModal(activeModal);
+      }
 
       // Remove active class from all tabs and contents
       tabs.forEach(t => t.classList.remove('active'));
