@@ -1,3 +1,12 @@
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // Tab management
 const tabs = document.querySelectorAll('.tab');
 const tabContents = document.querySelectorAll('.tab-content');
@@ -423,7 +432,7 @@ function editMainTrigger(triggerId) {
         const row = document.createElement('div');
         row.className = 'keyword-row';
         row.innerHTML = `
-          <input type="text" class="keyword-input" placeholder="Keyword" value="${keyword.keyword}">
+          <input type="text" class="keyword-input" placeholder="Keyword" value="${escHtml(keyword.keyword)}">
           <select class="operator-select">
             <option value="AND" ${keyword.operator === 'AND' ? 'selected' : ''}>AND</option>
             <option value="OR" ${keyword.operator === 'OR' ? 'selected' : ''}>OR</option>
@@ -553,9 +562,9 @@ function renderMainTriggers(mainTriggers, alerts) {
         <div class="item-row">
           <div style="flex:1;min-width:0">
             <div style="display:flex;align-items:center;gap:5px;">
-              <span class="item-title">${trigger.name}</span>${usageBadge}
+              <span class="item-title">${escHtml(trigger.name)}</span>${usageBadge}
             </div>
-            <div class="item-keywords">${keywordText}</div>
+            <div class="item-keywords">${escHtml(keywordText)}</div>
           </div>
           <div class="item-actions">
             <button class="btn btn-secondary edit-main-trigger" data-trigger-id="${trigger.id}">Edit</button>
@@ -668,7 +677,7 @@ function editSecondaryTrigger(triggerId) {
         const row = document.createElement('div');
         row.className = 'keyword-row';
         row.innerHTML = `
-          <input type="text" class="keyword-input" placeholder="Keyword" value="${keyword.keyword}">
+          <input type="text" class="keyword-input" placeholder="Keyword" value="${escHtml(keyword.keyword)}">
           <select class="operator-select">
             <option value="AND" ${keyword.operator === 'AND' ? 'selected' : ''}>AND</option>
             <option value="OR" ${keyword.operator === 'OR' ? 'selected' : ''}>OR</option>
@@ -792,9 +801,9 @@ function renderSecondaryTriggers(secondaryTriggers, alerts) {
         <div class="item-row">
           <div style="flex:1;min-width:0">
             <div style="display:flex;align-items:center;gap:5px;">
-              <span class="item-title">${trigger.name}</span>${usageBadge}
+              <span class="item-title">${escHtml(trigger.name)}</span>${usageBadge}
             </div>
-            <div class="item-keywords">${keywordText}</div>
+            <div class="item-keywords">${escHtml(keywordText)}</div>
           </div>
           <div class="item-actions">
             <button class="btn btn-secondary edit-secondary-trigger" data-trigger-id="${trigger.id}">Edit</button>
@@ -857,7 +866,7 @@ function loadTriggersForAlerts(callback) {
         div.className = 'checkbox-item';
         div.innerHTML = `
           <input type="checkbox" value="${trigger.id}" id="main-${trigger.id}">
-          <label for="main-${trigger.id}">${trigger.name}</label>
+          <label for="main-${trigger.id}">${escHtml(trigger.name)}</label>
         `;
         alertMainTriggersDiv.appendChild(div);
       });
@@ -876,7 +885,7 @@ function loadTriggersForAlerts(callback) {
         div.className = 'checkbox-item';
         div.innerHTML = `
           <input type="checkbox" value="${trigger.id}" id="secondary-${trigger.id}">
-          <label for="secondary-${trigger.id}">${trigger.name}</label>
+          <label for="secondary-${trigger.id}">${escHtml(trigger.name)}</label>
         `;
         alertSecondaryTriggersDiv.appendChild(div);
       });
@@ -926,14 +935,13 @@ function saveSectionNames() {
 }
 
 function updateAlertFormLabels(names) {
-  const esc = s => s.replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const n = [names[0] || 'Section 1', names[1] || 'Section 2', names[2] || 'Section 3'];
   const lbl1 = document.getElementById('section-label-1');
   const lbl2 = document.getElementById('section-label-2');
   const lbl3 = document.getElementById('section-label-3');
-  if (lbl1) lbl1.innerHTML = `${esc(n[0])} <span style="color: var(--destructive);">*</span>`;
-  if (lbl2) lbl2.innerHTML = `${esc(n[1])} <span style="color: var(--text-secondary); font-weight: 400;">(optional)</span>`;
-  if (lbl3) lbl3.innerHTML = `${esc(n[2])} <span style="color: var(--text-secondary); font-weight: 400;">(optional)</span>`;
+  if (lbl1) lbl1.innerHTML = `${escHtml(n[0])} <span style="color: var(--destructive);">*</span>`;
+  if (lbl2) lbl2.innerHTML = `${escHtml(n[1])} <span style="color: var(--text-secondary); font-weight: 400;">(optional)</span>`;
+  if (lbl3) lbl3.innerHTML = `${escHtml(n[2])} <span style="color: var(--text-secondary); font-weight: 400;">(optional)</span>`;
   const c1 = document.getElementById('section-content-1');
   const c2 = document.getElementById('section-content-2');
   const c3 = document.getElementById('section-content-3');
@@ -1246,12 +1254,12 @@ function renderFilteredAlerts(mainTriggers, secondaryTriggers) {
 
     const selectedMainTriggerNames = alert.mainTriggers.map(id => {
       const trigger = mainTriggers.find(t => t.id === id);
-      return trigger ? trigger.name : 'Deleted Trigger';
+      return trigger ? escHtml(trigger.name) : 'Deleted Trigger';
     });
 
     const selectedSecondaryTriggerNames = alert.secondaryTriggers.map(id => {
       const trigger = secondaryTriggers.find(t => t.id === id);
-      return trigger ? trigger.name : 'Deleted Trigger';
+      return trigger ? escHtml(trigger.name) : 'Deleted Trigger';
     });
 
     const contents = resolveSectionContents(alert);
@@ -1262,7 +1270,7 @@ function renderFilteredAlerts(mainTriggers, secondaryTriggers) {
 
     div.innerHTML = `
       <div class="item-row">
-        <div class="item-title" style="flex:1">${contents[0] || alert.message}</div>
+        <div class="item-title" style="flex:1">${escHtml(contents[0] || alert.message)}</div>
         <div class="item-actions">
           <button class="btn btn-secondary edit-alert" data-alert-id="${alert.id}">Edit</button>
           <button class="btn btn-danger delete-alert" data-alert-id="${alert.id}">Del</button>
