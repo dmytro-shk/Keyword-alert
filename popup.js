@@ -1325,16 +1325,16 @@ function deleteAlert(alertId) {
 // ===== IMPORT/EXPORT FUNCTIONS =====
 
 function exportData() {
-  chrome.storage.local.get(['mainTriggers', 'secondaryTriggers', 'alerts'], res => {
+  chrome.storage.local.get(['mainTriggers', 'secondaryTriggers', 'alerts', 'sectionNames', 'alertStyle', 'showTriggerNames', 'debugMode'], res => {
     const mainTriggers = res.mainTriggers || [];
     const secondaryTriggers = res.secondaryTriggers || [];
     const alerts = res.alerts || [];
 
     const exportData = {
-      version: "1.0.0",
+      version: "1.1.0",
       exportDate: new Date().toISOString(),
       exportSource: "Keyword Alert Extension",
-      mergeable: true, // Indicates this export supports merging
+      mergeable: true,
       credits: {
         icon: "Siren icon from Flaticon",
         iconUrl: "https://www.flaticon.com/free-icon/siren_18468278"
@@ -1344,6 +1344,12 @@ function exportData() {
         secondaryTriggers: secondaryTriggers.length,
         alerts: alerts.length,
         totalItems: mainTriggers.length + secondaryTriggers.length + alerts.length
+      },
+      settings: {
+        sectionNames:      res.sectionNames      || [],
+        alertStyle:        res.alertStyle        || 'custom',
+        showTriggerNames:  res.showTriggerNames  || 'none',
+        debugMode:         res.debugMode         || false
       },
       data: {
         mainTriggers: mainTriggers,
@@ -1417,8 +1423,11 @@ function showImportOptionsDialog(importData) {
     const currentSecondaryCount = (res.secondaryTriggers || []).length;
     const currentAlertCount = (res.alerts || []).length;
 
+    const hasSettings = !!importData.settings;
+    const settingsNote = hasSettings ? `\nSettings also included (section names, alert style, etc.).` : '';
+
     // Show simple confirmation dialog first
-    const basicMessage = `Found import file with ${mainCount} main triggers, ${secondaryCount} secondary triggers, and ${alertCount} alerts.
+    const basicMessage = `Found import file with ${mainCount} main triggers, ${secondaryCount} secondary triggers, and ${alertCount} alerts.${settingsNote}
 
 You currently have ${currentMainCount} main triggers, ${currentSecondaryCount} secondary triggers, and ${currentAlertCount} alerts.
 
@@ -1445,23 +1454,51 @@ Click OK to MERGE, Cancel to see REPLACE option.`;
   });
 }
 
+function applyImportedSettings(settings) {
+  if (!settings) return;
+  const toSet = {};
+  if (settings.sectionNames     !== undefined) toSet.sectionNames     = settings.sectionNames;
+  if (settings.alertStyle       !== undefined) toSet.alertStyle       = settings.alertStyle;
+  if (settings.showTriggerNames !== undefined) toSet.showTriggerNames = settings.showTriggerNames;
+  if (settings.debugMode        !== undefined) toSet.debugMode        = settings.debugMode;
+  if (Object.keys(toSet).length === 0) return;
+  chrome.storage.local.set(toSet, () => {
+    loadSectionNames();
+    loadAlertStyleSetting();
+    loadShowTriggerNamesSetting();
+    loadDebugModeSetting();
+  });
+}
+
+function settingsSummary(settings) {
+  if (!settings) return '';
+  const parts = [];
+  if (settings.sectionNames?.some(n => n)) parts.push(`section names: "${settings.sectionNames.filter(n=>n).join('", "')}"`);
+  if (settings.alertStyle)       parts.push(`alert style: ${settings.alertStyle}`);
+  if (settings.showTriggerNames) parts.push(`show trigger names: ${settings.showTriggerNames}`);
+  if (settings.debugMode)        parts.push(`debug mode: on`);
+  return parts.length ? '\nSettings: ' + parts.join(', ') : '';
+}
+
 function performReplaceImport(importData) {
   const mainCount = importData.data.mainTriggers.length;
   const secondaryCount = importData.data.secondaryTriggers.length;
   const alertCount = importData.data.alerts.length;
+  const hasSettings = !!importData.settings;
 
-  if (!confirm(`REPLACE: This will delete ALL current data and replace with ${mainCount} main trigger(s), ${secondaryCount} secondary trigger(s), and ${alertCount} alert(s). Continue?`)) {
+  const settingsLine = hasSettings ? `\n${settingsSummary(importData.settings)}` : '';
+  if (!confirm(`REPLACE: This will delete ALL current data and replace with ${mainCount} main trigger(s), ${secondaryCount} secondary trigger(s), and ${alertCount} alert(s).${settingsLine}\n\nContinue?`)) {
     return;
   }
 
-  // Replace all data (original behavior)
   chrome.storage.local.set({
     mainTriggers: importData.data.mainTriggers,
     secondaryTriggers: importData.data.secondaryTriggers,
     alerts: importData.data.alerts
   }, () => {
+    if (hasSettings) applyImportedSettings(importData.settings);
     loadAllData();
-    showImportSuccess('Data replaced successfully!');
+    showImportSuccess('Data replaced successfully!' + (hasSettings ? ' Settings applied.' : ''));
   });
 }
 
@@ -1489,7 +1526,10 @@ Continue with merge?`;
       return;
     }
 
-    console.log('User confirmed merge, applying data...');
+    const hasSettings = !!importData.settings;
+    const applySettings = hasSettings && confirm(
+      `The file also contains settings:${settingsSummary(importData.settings)}\n\nApply these settings too?`
+    );
 
     // Apply merged data
     chrome.storage.local.set({
@@ -1503,9 +1543,9 @@ Continue with merge?`;
         return;
       }
 
-      console.log('Data successfully saved to storage');
+      if (applySettings) applyImportedSettings(importData.settings);
       loadAllData();
-      showImportSuccess(`Data merged successfully! Added ${mergedData.stats.mainAdded + mergedData.stats.secondaryAdded + mergedData.stats.alertsAdded} new items.`);
+      showImportSuccess(`Data merged successfully! Added ${mergedData.stats.mainAdded + mergedData.stats.secondaryAdded + mergedData.stats.alertsAdded} new items.` + (applySettings ? ' Settings applied.' : ''));
     });
   } catch (error) {
     console.error('Error during merge:', error);
