@@ -507,7 +507,7 @@ function saveSuppressState() {
 loadSuppressState();
 
 // Function to show custom alert dialog
-function showCustomAlert(message, alertId, debugInfo, index) {
+function showCustomAlert(message, alertId, debugInfo, index, sections) {
   return new Promise((resolve) => {
     chrome.storage.local.get(['alertStyle'], (result) => {
       const alertStyle = result.alertStyle || 'custom';
@@ -518,7 +518,7 @@ function showCustomAlert(message, alertId, debugInfo, index) {
         resolve(null);
       } else {
         // Use custom modal
-        const modal = createAlertModal(message, alertId, debugInfo, index, resolve);
+        const modal = createAlertModal(message, alertId, debugInfo, index, resolve, sections);
         document.body.appendChild(modal);
       }
     });
@@ -526,7 +526,7 @@ function showCustomAlert(message, alertId, debugInfo, index) {
 }
 
 // Function to create custom alert modal
-function createAlertModal(message, alertId, debugInfo, index, resolve) {
+function createAlertModal(message, alertId, debugInfo, index, resolve, sections) {
   const overlay = document.createElement('div');
   overlay.style.cssText = `
     position: fixed;
@@ -621,6 +621,89 @@ function createAlertModal(message, alertId, debugInfo, index, resolve) {
 
   modal.appendChild(title);
   modal.appendChild(content);
+
+  // Render info sections with Copy buttons (backward-compatible: old alerts have no sections)
+  const validSections = (sections || []).filter(s => s.name || s.content);
+  if (validSections.length > 0) {
+    const sectionsWrap = document.createElement('div');
+    sectionsWrap.style.cssText = 'margin-bottom: 16px;';
+
+    validSections.forEach(section => {
+      const sectionDiv = document.createElement('div');
+      sectionDiv.style.cssText = `
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 10px 12px;
+        margin-bottom: 8px;
+        background: #f8f9fa;
+      `;
+
+      if (section.name) {
+        const nameEl = document.createElement('div');
+        nameEl.style.cssText = `
+          font-size: 11px;
+          font-weight: 600;
+          color: #666;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-bottom: 6px;
+        `;
+        nameEl.textContent = section.name;
+        sectionDiv.appendChild(nameEl);
+      }
+
+      const row = document.createElement('div');
+      row.style.cssText = 'display: flex; gap: 8px; align-items: flex-start;';
+
+      const contentEl = document.createElement('div');
+      contentEl.style.cssText = `
+        flex: 1;
+        font-size: 13px;
+        color: #333;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-break: break-word;
+      `;
+      contentEl.textContent = section.content || '';
+      row.appendChild(contentEl);
+
+      if (section.content) {
+        const copyBtn = document.createElement('button');
+        copyBtn.textContent = '📋 Copy';
+        copyBtn.style.cssText = `
+          padding: 4px 10px;
+          background: #f0f0f0;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+          font-size: 12px;
+          cursor: pointer;
+          white-space: nowrap;
+          flex-shrink: 0;
+        `;
+        copyBtn.onmouseover = () => copyBtn.style.background = '#e0e0e0';
+        copyBtn.onmouseout = () => copyBtn.style.background = '#f0f0f0';
+        copyBtn.onclick = () => {
+          navigator.clipboard.writeText(section.content).then(() => {
+            copyBtn.textContent = '✓ Copied!';
+            copyBtn.style.background = '#d4edda';
+            copyBtn.style.borderColor = '#b8dfc4';
+            setTimeout(() => {
+              copyBtn.textContent = '📋 Copy';
+              copyBtn.style.background = '#f0f0f0';
+              copyBtn.style.borderColor = '#ccc';
+            }, 1500);
+          });
+        };
+        row.appendChild(copyBtn);
+      }
+
+      sectionDiv.appendChild(row);
+      sectionsWrap.appendChild(sectionDiv);
+    });
+
+    modal.appendChild(sectionsWrap);
+  }
+
   modal.appendChild(buttonContainer);
   overlay.appendChild(modal);
 
@@ -873,7 +956,8 @@ function checkPage() {
             message: alertItem.message,
             id: alertItem.id,
             index: alertsTriggered + 1,
-            debugInfo: matchingCombinations
+            debugInfo: matchingCombinations,
+            sections: alertItem.sections || []
           });
           shownAlerts.add(alertItem.id);
           alertsTriggered++;
@@ -912,7 +996,7 @@ function checkPage() {
                 displayMessage = alertObj.message;
               }
 
-              await showCustomAlert(displayMessage, alertObj.id, alertObj.debugInfo, index);
+              await showCustomAlert(displayMessage, alertObj.id, alertObj.debugInfo, index, alertObj.sections);
             }, delay);
             delay += 300;
           });

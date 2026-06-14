@@ -634,6 +634,28 @@
         cursor: help;
       }
 
+      /* Alert section blocks (in alert creation form) */
+      .alert-section-block {
+        border: 1px solid var(--border-secondary);
+        border-radius: var(--radius-small);
+        padding: 10px;
+        background: var(--surface);
+        margin-bottom: 8px;
+      }
+
+      .alert-section-block:last-child {
+        margin-bottom: 0;
+      }
+
+      .section-block-label {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 6px;
+      }
+
       /* Settings tab */
       .settings-section {
         background: var(--surface-secondary);
@@ -1051,7 +1073,29 @@
 
           <div class="form-group">
             <label class="form-label">Alert Message</label>
-            <textarea id="alert-message" class="form-input" rows="3" placeholder="Enter the message to show when triggers match"></textarea>
+            <textarea id="alert-message" class="form-input" rows="2" placeholder="Enter the message to show when triggers match"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Info Sections <span style="color: var(--text-secondary); font-weight: 400;">(optional — each shown with a Copy button in the alert)</span></label>
+
+            <div class="alert-section-block">
+              <div class="section-block-label">Section 1</div>
+              <input type="text" id="section-name-1" class="form-input" placeholder="Name (e.g., Access Policy)" style="margin-bottom: 6px;">
+              <textarea id="section-content-1" class="form-input" rows="2" placeholder="Content to copy..."></textarea>
+            </div>
+
+            <div class="alert-section-block">
+              <div class="section-block-label">Section 2</div>
+              <input type="text" id="section-name-2" class="form-input" placeholder="Name (e.g., PM Policy)" style="margin-bottom: 6px;">
+              <textarea id="section-content-2" class="form-input" rows="2" placeholder="Content to copy..."></textarea>
+            </div>
+
+            <div class="alert-section-block">
+              <div class="section-block-label">Section 3</div>
+              <input type="text" id="section-name-3" class="form-input" placeholder="Name (e.g., POC Info)" style="margin-bottom: 6px;">
+              <textarea id="section-content-3" class="form-input" rows="2" placeholder="Content to copy..."></textarea>
+            </div>
           </div>
 
           <div class="actions">

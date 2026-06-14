@@ -862,6 +862,13 @@ let currentFilters = {
   secondaryTrigger: ''
 };
 
+function collectSections() {
+  return [1, 2, 3].map(i => ({
+    name: (document.getElementById(`section-name-${i}`)?.value || '').trim(),
+    content: (document.getElementById(`section-content-${i}`)?.value || '').trim()
+  })).filter(s => s.name || s.content);
+}
+
 function saveAlert() {
   const selectedMainTriggers = Array.from(alertMainTriggersDiv.querySelectorAll('input[type="checkbox"]:checked')).map(cb => parseInt(cb.value));
   const selectedSecondaryTriggers = Array.from(alertSecondaryTriggersDiv.querySelectorAll('input[type="checkbox"]:checked')).map(cb => parseInt(cb.value));
@@ -880,6 +887,7 @@ function saveAlert() {
   chrome.storage.local.get(['alerts'], res => {
     let alerts = res.alerts || [];
     const wasEditing = !!editingAlertId;
+    const sections = collectSections();
 
     if (editingAlertId) {
       // Update existing alert
@@ -889,7 +897,8 @@ function saveAlert() {
           id: editingAlertId,
           mainTriggers: selectedMainTriggers,
           secondaryTriggers: selectedSecondaryTriggers,
-          message: alertMessage
+          message: alertMessage,
+          sections
         };
       }
       editingAlertId = null;
@@ -901,7 +910,8 @@ function saveAlert() {
         id: Date.now(),
         mainTriggers: selectedMainTriggers,
         secondaryTriggers: selectedSecondaryTriggers,
-        message: alertMessage
+        message: alertMessage,
+        sections
       };
       alerts.push(newAlert);
     }
@@ -937,6 +947,14 @@ function editAlert(alertId) {
       // Load alert data into form
       alertMessageTextArea.value = alertToEdit.message;
 
+      // Load sections (backward-compatible: old alerts have no sections)
+      const savedSections = alertToEdit.sections || [];
+      [1, 2, 3].forEach(i => {
+        const s = savedSections[i - 1] || {};
+        document.getElementById(`section-name-${i}`).value = s.name || '';
+        document.getElementById(`section-content-${i}`).value = s.content || '';
+      });
+
       // Open alert modal for editing
       openModal(alertModal);
 
@@ -968,6 +986,10 @@ function clearAlertForm() {
   alertMainTriggersDiv.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
   alertSecondaryTriggersDiv.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
   alertMessageTextArea.value = '';
+  [1, 2, 3].forEach(i => {
+    document.getElementById(`section-name-${i}`).value = '';
+    document.getElementById(`section-content-${i}`).value = '';
+  });
 }
 
 function loadAlerts() {
@@ -1154,8 +1176,11 @@ function renderFilteredAlerts(mainTriggers, secondaryTriggers) {
       <div style="margin-bottom: 8px;">
         <strong>Main:</strong> ${selectedMainTriggerNames.join(', ')}
       </div>
-      ${selectedSecondaryTriggerNames.length > 0 ? `<div style="margin-bottom: 12px;"><strong>Secondary:</strong> ${selectedSecondaryTriggerNames.join(', ')}</div>` : ''}
+      ${selectedSecondaryTriggerNames.length > 0 ? `<div style="margin-bottom: 8px;"><strong>Secondary:</strong> ${selectedSecondaryTriggerNames.join(', ')}</div>` : ''}
       <div class="alert-message">${alert.message}</div>
+      ${(alert.sections || []).filter(s => s.name || s.content).length > 0
+        ? `<div style="font-size: 11px; color: var(--text-secondary); margin: 4px 0 8px 0;">📋 ${(alert.sections || []).filter(s => s.name || s.content).length} info section(s)</div>`
+        : ''}
       <div class="item-actions">
         <button class="btn btn-secondary edit-alert" data-alert-id="${alert.id}">Edit</button>
         <button class="btn btn-danger delete-alert" data-alert-id="${alert.id}">Delete</button>
