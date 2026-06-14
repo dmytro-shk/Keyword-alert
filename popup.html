@@ -646,6 +646,15 @@
           🐛 Debug Mode (shows trigger details in alerts)
         </label>
       </div>
+      <div class="alert-style-setting" style="margin: 8px 0; text-align: center;">
+        <label style="font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; justify-content: center; gap: 6px;">
+          Alert Style:
+          <select id="alert-style-select" style="accent-color: var(--primary); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--background-primary); color: var(--text-primary); font-size: 12px;">
+            <option value="native">Native (Browser Alert)</option>
+            <option value="custom">Custom (Suppressable)</option>
+          </select>
+        </label>
+      </div>
       <div class="import-export-buttons">
         <button id="expand-btn" class="btn btn-secondary">⛶ Expand</button>
         <button id="export-btn" class="btn btn-secondary">📤 Export</button>
@@ -660,6 +669,7 @@
         <button class="tab active" data-tab="main-triggers">Main Triggers</button>
         <button class="tab" data-tab="secondary-triggers">Secondary</button>
         <button class="tab" data-tab="alerts">Alerts</button>
+        <button class="tab" data-tab="how-it-works">How It Works</button>
       </div>
 
     <!-- Main Triggers Tab -->
@@ -671,6 +681,16 @@
 
       <div class="section section-saved-triggers">
         <div class="section-title">Saved Main Triggers</div>
+
+        <!-- Search Section -->
+        <div class="filter-section">
+          <div class="filter-row">
+            <input type="text" id="main-trigger-search" class="form-input" placeholder="Search triggers by name or keywords..." style="flex: 1;">
+            <button id="clear-main-search" class="btn btn-secondary" style="padding: 6px 8px;">Clear</button>
+          </div>
+          <span id="main-trigger-count" style="font-size: 12px; color: var(--text-secondary);"></span>
+        </div>
+
         <div id="main-triggers-list" class="scrollable">
           <div class="empty-state">
             <div class="empty-state-icon">⚡</div>
@@ -690,6 +710,16 @@
 
       <div class="section section-saved-triggers">
         <div class="section-title">Saved Secondary Triggers</div>
+
+        <!-- Search Section -->
+        <div class="filter-section">
+          <div class="filter-row">
+            <input type="text" id="secondary-trigger-search" class="form-input" placeholder="Search triggers by name or keywords..." style="flex: 1;">
+            <button id="clear-secondary-search" class="btn btn-secondary" style="padding: 6px 8px;">Clear</button>
+          </div>
+          <span id="secondary-trigger-count" style="font-size: 12px; color: var(--text-secondary);"></span>
+        </div>
+
         <div id="secondary-triggers-list" class="scrollable">
           <div class="empty-state">
             <div class="empty-state-icon">🎯</div>
@@ -733,6 +763,67 @@
             <div class="empty-state-icon">🔔</div>
             <div class="empty-state-text">No alerts configured</div>
             <div class="empty-state-subtext">Click "Create Alert" above</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- How It Works Tab -->
+    <div id="how-it-works-content" class="tab-content">
+      <div class="section">
+        <div class="section-title" style="text-align: center; margin-bottom: 20px;">How Keyword Alert Works</div>
+
+        <div style="padding: 0 10px; max-width: 600px; margin: 0 auto;">
+          <h4 style="color: var(--primary); margin-top: 15px;">🎯 1. Main Triggers</h4>
+          <p style="line-height: 1.6; color: var(--text-primary);">
+            Main triggers detect specific pages or content on websites. Create triggers with keywords that must appear together on the page.
+          </p>
+          <p style="line-height: 1.6; color: var(--text-secondary); font-size: 13px;">
+            <strong>Example:</strong> "New work order" AND "Work order summary" to detect a work order creation page.
+          </p>
+
+          <h4 style="color: var(--primary); margin-top: 20px;">⚡ 2. Secondary Triggers (Optional)</h4>
+          <p style="line-height: 1.6; color: var(--text-primary);">
+            Secondary triggers add additional conditions that must also be met. They work together with main triggers.
+          </p>
+          <p style="line-height: 1.6; color: var(--text-secondary); font-size: 13px;">
+            <strong>Example:</strong> "Priority: High" OR "Urgent" to narrow down to high-priority work orders only.
+          </p>
+
+          <h4 style="color: var(--primary); margin-top: 20px;">🔔 3. Alerts</h4>
+          <p style="line-height: 1.6; color: var(--text-primary);">
+            Alerts combine triggers and define what notification to show. Select one or more main triggers and optionally secondary triggers.
+          </p>
+          <p style="line-height: 1.6; color: var(--text-secondary); font-size: 13px;">
+            <strong>How it works:</strong> The alert triggers when <em>any</em> main trigger matches AND (if selected) <em>any</em> secondary trigger matches.
+          </p>
+
+          <h4 style="color: var(--primary); margin-top: 20px;">🔍 4. AND/OR Operators</h4>
+          <p style="line-height: 1.6; color: var(--text-primary);">
+            Within each trigger, you can use AND/OR operators between keywords:
+          </p>
+          <ul style="line-height: 1.8; color: var(--text-secondary); margin-left: 20px;">
+            <li><strong>AND:</strong> Both keywords must be present</li>
+            <li><strong>OR:</strong> Either keyword can be present</li>
+          </ul>
+          <p style="line-height: 1.6; color: var(--text-secondary); font-size: 13px;">
+            <strong>Example:</strong> "error" OR "warning" AND "critical" matches pages with either "error" or "warning", but "critical" must also be present.
+          </p>
+
+          <h4 style="color: var(--primary); margin-top: 20px;">🐛 5. Debug Mode</h4>
+          <p style="line-height: 1.6; color: var(--text-primary);">
+            Enable debug mode in settings to see which keywords matched when an alert triggers. This helps you fine-tune your triggers.
+          </p>
+
+          <h4 style="color: var(--primary); margin-top: 20px;">💾 6. Import/Export</h4>
+          <p style="line-height: 1.6; color: var(--text-primary);">
+            Export your configuration to back up or share with others. Import can merge with existing data or replace it entirely.
+          </p>
+
+          <div style="margin-top: 30px; padding: 15px; background: var(--background-secondary); border-radius: 8px; border-left: 4px solid var(--primary);">
+            <p style="margin: 0; color: var(--text-primary); line-height: 1.6;">
+              <strong>💡 Tip:</strong> Start simple with one main trigger and one alert. Add secondary triggers and more complex logic as needed.
+            </p>
           </div>
         </div>
       </div>

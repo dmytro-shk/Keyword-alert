@@ -34,6 +34,14 @@ const alertFilterSecondary = document.getElementById('alert-filter-secondary');
 const clearAlertFilterBtn = document.getElementById('clear-alert-filter');
 const alertCount = document.getElementById('alert-count');
 
+// Search elements for Main and Secondary triggers
+const mainTriggerSearch = document.getElementById('main-trigger-search');
+const clearMainSearch = document.getElementById('clear-main-search');
+const mainTriggerCount = document.getElementById('main-trigger-count');
+const secondaryTriggerSearch = document.getElementById('secondary-trigger-search');
+const clearSecondarySearch = document.getElementById('clear-secondary-search');
+const secondaryTriggerCount = document.getElementById('secondary-trigger-count');
+
 // Import/Export elements
 const expandBtn = document.getElementById('expand-btn');
 const exportBtn = document.getElementById('export-btn');
@@ -49,8 +57,9 @@ const mainTriggerModal = document.getElementById('main-trigger-modal');
 const secondaryTriggerModal = document.getElementById('secondary-trigger-modal');
 const alertModal = document.getElementById('alert-modal');
 
-// Debug mode elements
+// Debug mode and alert style elements
 const debugModeCheckbox = document.getElementById('debug-mode-checkbox');
+const alertStyleSelect = document.getElementById('alert-style-select');
 
 // Initialize app
 function init() {
@@ -104,7 +113,39 @@ function setupEventHandlers() {
   cancelAlertEditBtn.addEventListener('click', clearAlertForm);
   clearAlertFormBtn.addEventListener('click', clearAlertForm);
 
-  // Filter functionality
+  // Main trigger search functionality
+  mainTriggerSearch.addEventListener('input', (e) => {
+    mainTriggerSearchTerm = e.target.value;
+    chrome.storage.local.get(['mainTriggers', 'alerts'], res => {
+      applyMainTriggerFilter(res.mainTriggers || [], res.alerts || []);
+    });
+  });
+
+  clearMainSearch.addEventListener('click', () => {
+    mainTriggerSearch.value = '';
+    mainTriggerSearchTerm = '';
+    chrome.storage.local.get(['mainTriggers', 'alerts'], res => {
+      applyMainTriggerFilter(res.mainTriggers || [], res.alerts || []);
+    });
+  });
+
+  // Secondary trigger search functionality
+  secondaryTriggerSearch.addEventListener('input', (e) => {
+    secondaryTriggerSearchTerm = e.target.value;
+    chrome.storage.local.get(['secondaryTriggers', 'alerts'], res => {
+      applySecondaryTriggerFilter(res.secondaryTriggers || [], res.alerts || []);
+    });
+  });
+
+  clearSecondarySearch.addEventListener('click', () => {
+    secondaryTriggerSearch.value = '';
+    secondaryTriggerSearchTerm = '';
+    chrome.storage.local.get(['secondaryTriggers', 'alerts'], res => {
+      applySecondaryTriggerFilter(res.secondaryTriggers || [], res.alerts || []);
+    });
+  });
+
+  // Alert filter functionality
   alertFilterInput.addEventListener('input', (e) => {
     currentFilters.search = e.target.value;
     applyFiltersAndRender();
@@ -143,6 +184,10 @@ function setupEventHandlers() {
   // Debug mode functionality
   debugModeCheckbox.addEventListener('change', saveDebugModeSetting);
   loadDebugModeSetting();
+
+  // Alert style functionality
+  alertStyleSelect.addEventListener('change', saveAlertStyleSetting);
+  loadAlertStyleSetting();
 
   // Keyword row removal (delegated events)
   mainKeywordContainer.addEventListener('click', (e) => {
@@ -279,8 +324,11 @@ function evaluateTrigger(trigger, text) {
 // ===== MAIN TRIGGERS FUNCTIONS =====
 
 
-// Variable to track if we're editing
+// Variables to track if we're editing and filtering
 let editingMainTriggerId = null;
+let allMainTriggers = [];
+let filteredMainTriggers = [];
+let mainTriggerSearchTerm = '';
 
 function saveMainTrigger() {
   const name = mainTriggerNameInput.value.trim();
@@ -377,29 +425,81 @@ function clearMainTriggerForm() {
 
 function loadMainTriggers() {
   chrome.storage.local.get(['mainTriggers', 'alerts'], res => {
-    const mainTriggers = res.mainTriggers || [];
+    allMainTriggers = res.mainTriggers || [];
     const alerts = res.alerts || [];
-    console.log('Loading', mainTriggers.length, 'main triggers');
+    console.log('Loading', allMainTriggers.length, 'main triggers');
 
     if (!mainTriggersList) {
       console.error('mainTriggersList element not found!');
       return;
     }
 
-    mainTriggersList.innerHTML = '';
+    // Apply search filter
+    applyMainTriggerFilter(allMainTriggers, alerts);
+  });
+}
 
-    if (mainTriggers.length === 0) {
-      mainTriggersList.innerHTML = `
-        <div class="empty-state">
-          <div class="empty-state-icon">⚡</div>
-          <div class="empty-state-text">No main triggers yet</div>
-          <div class="empty-state-subtext">Create your first trigger above</div>
-        </div>
-      `;
-      return;
+function applyMainTriggerFilter(mainTriggers, alerts) {
+  // Filter triggers based on search term
+  filteredMainTriggers = mainTriggers.filter(trigger => {
+    if (!mainTriggerSearchTerm) return true;
+
+    const searchLower = mainTriggerSearchTerm.toLowerCase();
+
+    // Search in trigger name
+    if (trigger.name.toLowerCase().includes(searchLower)) {
+      return true;
     }
 
-    mainTriggers.forEach(trigger => {
+    // Search in keywords
+    if (trigger.keywords && trigger.keywords.some(kw =>
+      kw.keyword.toLowerCase().includes(searchLower)
+    )) {
+      return true;
+    }
+
+    return false;
+  });
+
+  // Update count
+  if (allMainTriggers.length === 0) {
+    mainTriggerCount.textContent = '';
+  } else if (filteredMainTriggers.length === allMainTriggers.length) {
+    mainTriggerCount.textContent = `${allMainTriggers.length} trigger${allMainTriggers.length !== 1 ? 's' : ''}`;
+  } else {
+    mainTriggerCount.textContent = `${filteredMainTriggers.length} of ${allMainTriggers.length} trigger${allMainTriggers.length !== 1 ? 's' : ''}`;
+  }
+
+  // Render
+  renderMainTriggers(filteredMainTriggers, alerts);
+}
+
+function renderMainTriggers(mainTriggers, alerts) {
+  mainTriggersList.innerHTML = '';
+
+  if (allMainTriggers.length === 0) {
+    mainTriggersList.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">⚡</div>
+        <div class="empty-state-text">No main triggers yet</div>
+        <div class="empty-state-subtext">Create your first trigger above</div>
+      </div>
+    `;
+    return;
+  }
+
+  if (mainTriggers.length === 0) {
+    mainTriggersList.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">🔍</div>
+        <div class="empty-state-text">No triggers match your search</div>
+        <div class="empty-state-subtext">Try a different search term</div>
+      </div>
+    `;
+    return;
+  }
+
+  mainTriggers.forEach(trigger => {
       const div = document.createElement('div');
       div.className = 'trigger-item';
 
@@ -430,7 +530,6 @@ function loadMainTriggers() {
 
       mainTriggersList.appendChild(div);
     });
-  });
 }
 
 function deleteMainTrigger(triggerId) {
@@ -467,8 +566,11 @@ function deleteMainTrigger(triggerId) {
 // ===== SECONDARY TRIGGERS FUNCTIONS =====
 
 
-// Variable to track if we're editing
+// Variables to track if we're editing and filtering
 let editingSecondaryTriggerId = null;
+let allSecondaryTriggers = [];
+let filteredSecondaryTriggers = [];
+let secondaryTriggerSearchTerm = '';
 
 function saveSecondaryTrigger() {
   const name = secondaryTriggerNameInput.value.trim();
@@ -565,22 +667,75 @@ function clearSecondaryTriggerForm() {
 
 function loadSecondaryTriggers() {
   chrome.storage.local.get(['secondaryTriggers', 'alerts'], res => {
-    const secondaryTriggers = res.secondaryTriggers || [];
+    allSecondaryTriggers = res.secondaryTriggers || [];
     const alerts = res.alerts || [];
-    secondaryTriggersList.innerHTML = '';
 
-    if (secondaryTriggers.length === 0) {
-      secondaryTriggersList.innerHTML = `
-        <div class="empty-state">
-          <div class="empty-state-icon">🎯</div>
-          <div class="empty-state-text">No secondary triggers yet</div>
-          <div class="empty-state-subtext">Create your first trigger above</div>
-        </div>
-      `;
-      return;
+    // Apply search filter
+    applySecondaryTriggerFilter(allSecondaryTriggers, alerts);
+  });
+}
+
+function applySecondaryTriggerFilter(secondaryTriggers, alerts) {
+  // Filter triggers based on search term
+  filteredSecondaryTriggers = secondaryTriggers.filter(trigger => {
+    if (!secondaryTriggerSearchTerm) return true;
+
+    const searchLower = secondaryTriggerSearchTerm.toLowerCase();
+
+    // Search in trigger name
+    if (trigger.name.toLowerCase().includes(searchLower)) {
+      return true;
     }
 
-    secondaryTriggers.forEach(trigger => {
+    // Search in keywords
+    if (trigger.keywords && trigger.keywords.some(kw =>
+      kw.keyword.toLowerCase().includes(searchLower)
+    )) {
+      return true;
+    }
+
+    return false;
+  });
+
+  // Update count
+  if (allSecondaryTriggers.length === 0) {
+    secondaryTriggerCount.textContent = '';
+  } else if (filteredSecondaryTriggers.length === allSecondaryTriggers.length) {
+    secondaryTriggerCount.textContent = `${allSecondaryTriggers.length} trigger${allSecondaryTriggers.length !== 1 ? 's' : ''}`;
+  } else {
+    secondaryTriggerCount.textContent = `${filteredSecondaryTriggers.length} of ${allSecondaryTriggers.length} trigger${allSecondaryTriggers.length !== 1 ? 's' : ''}`;
+  }
+
+  // Render
+  renderSecondaryTriggers(filteredSecondaryTriggers, alerts);
+}
+
+function renderSecondaryTriggers(secondaryTriggers, alerts) {
+  secondaryTriggersList.innerHTML = '';
+
+  if (allSecondaryTriggers.length === 0) {
+    secondaryTriggersList.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">🎯</div>
+        <div class="empty-state-text">No secondary triggers yet</div>
+        <div class="empty-state-subtext">Create your first trigger above</div>
+      </div>
+    `;
+    return;
+  }
+
+  if (secondaryTriggers.length === 0) {
+    secondaryTriggersList.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">🔍</div>
+        <div class="empty-state-text">No triggers match your search</div>
+        <div class="empty-state-subtext">Try a different search term</div>
+      </div>
+    `;
+    return;
+  }
+
+  secondaryTriggers.forEach(trigger => {
       const div = document.createElement('div');
       div.className = 'trigger-item';
 
@@ -610,7 +765,6 @@ function loadSecondaryTriggers() {
       `;
       secondaryTriggersList.appendChild(div);
     });
-  });
 }
 
 function deleteSecondaryTrigger(triggerId) {
@@ -1562,6 +1716,21 @@ function loadDebugModeSetting() {
     const debugMode = result.debugMode || false;
     debugModeCheckbox.checked = debugMode;
     console.log('Debug mode setting loaded:', debugMode);
+  });
+}
+
+function saveAlertStyleSetting() {
+  const alertStyle = alertStyleSelect.value;
+  chrome.storage.local.set({ alertStyle }, () => {
+    console.log('Alert style setting saved:', alertStyle);
+  });
+}
+
+function loadAlertStyleSetting() {
+  chrome.storage.local.get(['alertStyle'], (result) => {
+    const alertStyle = result.alertStyle || 'native';
+    alertStyleSelect.value = alertStyle;
+    console.log('Alert style setting loaded:', alertStyle);
   });
 }
 

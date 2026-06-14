@@ -469,6 +469,155 @@ let checking = false;  // simple guard to avoid overlapping checks
 let shownAlerts = new Set(); // Track which specific alerts have been shown
 let lastCheckTime = 0; // Track last check time for debouncing
 const CHECK_DEBOUNCE_MS = 1000; // Minimum time between checks
+const suppressedAlerts = new Map(); // Track suppressed alerts: alertId -> expiryTime
+
+// Function to show custom alert dialog
+function showCustomAlert(message, alertId, debugInfo, index) {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['alertStyle'], (result) => {
+      const alertStyle = result.alertStyle || 'native';
+
+      if (alertStyle === 'native') {
+        // Use native window.alert
+        window.alert(message);
+        resolve(null);
+      } else {
+        // Use custom modal
+        const modal = createAlertModal(message, alertId, debugInfo, index, resolve);
+        document.body.appendChild(modal);
+      }
+    });
+  });
+}
+
+// Function to create custom alert modal
+function createAlertModal(message, alertId, debugInfo, index, resolve) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 999999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  `;
+
+  const modal = document.createElement('div');
+  modal.style.cssText = `
+    background: white;
+    padding: 24px;
+    border-radius: 12px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    animation: slideIn 0.3s ease-out;
+  `;
+
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes slideIn {
+      from { transform: translateY(-20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+  `;
+  document.head.appendChild(style);
+
+  const title = document.createElement('div');
+  title.style.cssText = `
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: #1a1a1a;
+  `;
+  title.textContent = `🚨 Keyword Alert`;
+
+  const content = document.createElement('div');
+  content.style.cssText = `
+    font-size: 14px;
+    line-height: 1.6;
+    color: #333;
+    white-space: pre-wrap;
+    margin-bottom: 20px;
+  `;
+  content.textContent = message;
+
+  const buttonContainer = document.createElement('div');
+  buttonContainer.style.cssText = `
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  `;
+
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = 'OK';
+  closeBtn.style.cssText = `
+    flex: 1;
+    padding: 10px 16px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+  `;
+  closeBtn.onmouseover = () => closeBtn.style.background = '#0056b3';
+  closeBtn.onmouseout = () => closeBtn.style.background = '#007bff';
+  closeBtn.onclick = () => {
+    document.body.removeChild(overlay);
+    resolve(null);
+  };
+
+  // Suppress buttons
+  const suppress1 = createSuppressButton('1 min', 1, alertId, overlay, resolve);
+  const suppress2 = createSuppressButton('2 min', 2, alertId, overlay, resolve);
+  const suppress5 = createSuppressButton('5 min', 5, alertId, overlay, resolve);
+
+  buttonContainer.appendChild(closeBtn);
+  buttonContainer.appendChild(suppress1);
+  buttonContainer.appendChild(suppress2);
+  buttonContainer.appendChild(suppress5);
+
+  modal.appendChild(title);
+  modal.appendChild(content);
+  modal.appendChild(buttonContainer);
+  overlay.appendChild(modal);
+
+  return overlay;
+}
+
+function createSuppressButton(label, minutes, alertId, overlay, resolve) {
+  const btn = document.createElement('button');
+  btn.textContent = `Suppress ${label}`;
+  btn.style.cssText = `
+    padding: 10px 16px;
+    background: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+  `;
+  btn.onmouseover = () => btn.style.background = '#5a6268';
+  btn.onmouseout = () => btn.style.background = '#6c757d';
+  btn.onclick = () => {
+    const expiryTime = Date.now() + (minutes * 60 * 1000);
+    suppressedAlerts.set(alertId, expiryTime);
+    shownAlerts.delete(alertId); // Allow it to show again after suppression expires
+    console.log(`Alert ${alertId} suppressed for ${minutes} minute(s)`);
+    document.body.removeChild(overlay);
+    resolve({ suppressed: true, minutes });
+  };
+  return btn;
+}
 
 function safeGetPageText() {
   // prefer innerText (visible text), fallback to textContent
@@ -586,6 +735,16 @@ function checkPage() {
       const triggeredAlerts = [];
 
       alerts.forEach((alertItem, alertIndex) => {
+        // Check if alert is currently suppressed
+        const suppressExpiry = suppressedAlerts.get(alertItem.id);
+        if (suppressExpiry && Date.now() < suppressExpiry) {
+          DebugLogger.log('SYSTEM', `Alert "${alertItem.message}" is suppressed until ${new Date(suppressExpiry).toLocaleTimeString()}`);
+          return; // Skip this alert
+        } else if (suppressExpiry) {
+          // Suppression expired, remove it
+          suppressedAlerts.delete(alertItem.id);
+        }
+
         // Check all combinations of main + secondary trigger sets
         let triggered = false;
         let matchingCombinations = [];
@@ -618,7 +777,7 @@ function checkPage() {
             }
           }
         } else {
-          // Check all combinations of main + secondary trigger sets
+          // Performance optimization: Check main triggers first, then only check secondary if main matches
           for (const mainTriggerId of alertItem.mainTriggers) {
             const mainTrigger = mainTriggers.find(t => t.id === mainTriggerId);
             if (!mainTrigger) {
@@ -628,30 +787,33 @@ function checkPage() {
 
             const mainDetails = window.evaluateTriggerWithDetails(mainTrigger, pageText);
 
-            for (const secondaryTriggerId of alertItem.secondaryTriggers) {
-              const secondaryTrigger = secondaryTriggers.find(t => t.id === secondaryTriggerId);
-              if (!secondaryTrigger) {
-                DebugLogger.log('ERROR', `Secondary trigger ID ${secondaryTriggerId} not found for alert "${alertItem.message}"`);
-                continue;
-              }
+            // Only check secondary triggers if main trigger matched (performance optimization)
+            if (mainDetails.matched) {
+              for (const secondaryTriggerId of alertItem.secondaryTriggers) {
+                const secondaryTrigger = secondaryTriggers.find(t => t.id === secondaryTriggerId);
+                if (!secondaryTrigger) {
+                  DebugLogger.log('ERROR', `Secondary trigger ID ${secondaryTriggerId} not found for alert "${alertItem.message}"`);
+                  continue;
+                }
 
-              const secondaryDetails = window.evaluateTriggerWithDetails(secondaryTrigger, pageText);
+                const secondaryDetails = window.evaluateTriggerWithDetails(secondaryTrigger, pageText);
 
-              // If both main and secondary trigger in this combination match
-              if (mainDetails.matched && secondaryDetails.matched) {
-                triggered = true;
+                // If both main and secondary trigger in this combination match
+                if (secondaryDetails.matched) {
+                  triggered = true;
 
-                // Create detailed debug information
-                const detailedInfo = {
-                  mainTrigger: mainDetails.triggerName,
-                  mainKeywords: mainDetails.matchedKeywords,
-                  mainExpression: mainDetails.expression,
-                  secondaryTrigger: secondaryDetails.triggerName,
-                  secondaryKeywords: secondaryDetails.matchedKeywords,
-                  secondaryExpression: secondaryDetails.expression
-                };
+                  // Create detailed debug information
+                  const detailedInfo = {
+                    mainTrigger: mainDetails.triggerName,
+                    mainKeywords: mainDetails.matchedKeywords,
+                    mainExpression: mainDetails.expression,
+                    secondaryTrigger: secondaryDetails.triggerName,
+                    secondaryKeywords: secondaryDetails.matchedKeywords,
+                    secondaryExpression: secondaryDetails.expression
+                  };
 
-                matchingCombinations.push(detailedInfo);
+                  matchingCombinations.push(detailedInfo);
+                }
               }
             }
           }
@@ -689,8 +851,10 @@ function checkPage() {
         chrome.storage.local.get(['debugMode'], (result) => {
           const debugMode = result.debugMode || false;
 
+          // Show alerts sequentially
+          let delay = 0;
           triggeredAlerts.forEach((alertObj, index) => {
-            setTimeout(() => {
+            setTimeout(async () => {
               DebugLogger.log('ALERT', `Displaying: "${alertObj.message}"`);
 
               let displayMessage;
@@ -706,14 +870,15 @@ function checkPage() {
                   }
                 });
 
-                displayMessage = `🚨 Alert ${index + 1}: ${alertObj.message}\n\n🐛 Debug Info:\n• ${debugLines.join('\n• ')}`;
+                displayMessage = `Alert ${index + 1}: ${alertObj.message}\n\n🐛 Debug Info:\n• ${debugLines.join('\n• ')}`;
               } else {
                 // Standard message
                 displayMessage = `Alert ${index + 1}: ${alertObj.message}`;
               }
 
-              window.alert(displayMessage);
-            }, index * 300);
+              await showCustomAlert(displayMessage, alertObj.id, alertObj.debugInfo, index);
+            }, delay);
+            delay += 300;
           });
         });
         alerted = true;
