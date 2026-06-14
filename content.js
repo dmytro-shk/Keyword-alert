@@ -519,19 +519,42 @@ function resolveSectionContents(sections, fallbackMessage) {
   return [fallbackMessage || '', '', ''];
 }
 
+function buildAlertTitle(debugInfo, showTriggerNames) {
+  const base = '🚨 Keyword Alert';
+  if (!debugInfo || !debugInfo.length || !showTriggerNames || showTriggerNames === 'none') return base;
+
+  const mainNames = [...new Set(debugInfo.map(c => c.mainTrigger).filter(Boolean))];
+  const secNames  = [...new Set(debugInfo.map(c => c.secondaryTrigger).filter(Boolean))];
+
+  let forPart = '';
+  if (showTriggerNames === 'main' && mainNames.length) {
+    forPart = mainNames.join(', ');
+  } else if (showTriggerNames === 'secondary' && secNames.length) {
+    forPart = secNames.join(', ');
+  } else if (showTriggerNames === 'both') {
+    const parts = [];
+    if (mainNames.length) parts.push(mainNames.join(', '));
+    if (secNames.length)  parts.push(secNames.join(', '));
+    forPart = parts.join(' + ');
+  }
+
+  return forPart ? `${base} for: ${forPart}` : base;
+}
+
 // Function to show custom alert dialog
 function showCustomAlert(message, alertId, debugInfo, sections) {
   return new Promise((resolve) => {
-    chrome.storage.local.get(['alertStyle', 'sectionNames', 'debugMode'], (result) => {
+    chrome.storage.local.get(['alertStyle', 'sectionNames', 'debugMode', 'showTriggerNames'], (result) => {
       const alertStyle = result.alertStyle || 'custom';
       const sectionNames = result.sectionNames || [];
       const debugMode = result.debugMode || false;
+      const showTriggerNames = result.showTriggerNames || 'none';
 
       if (alertStyle === 'native') {
         window.alert(message);
         resolve(null);
       } else {
-        const modal = createAlertModal(message, alertId, debugInfo, resolve, sections, sectionNames, debugMode);
+        const modal = createAlertModal(message, alertId, debugInfo, resolve, sections, sectionNames, debugMode, showTriggerNames);
         document.body.appendChild(modal);
       }
     });
@@ -539,7 +562,7 @@ function showCustomAlert(message, alertId, debugInfo, sections) {
 }
 
 // Function to create custom alert modal
-function createAlertModal(message, alertId, debugInfo, resolve, sections, sectionNames, debugMode) {
+function createAlertModal(message, alertId, debugInfo, resolve, sections, sectionNames, debugMode, showTriggerNames) {
   const overlay = document.createElement('div');
   overlay.style.cssText = `
     position: fixed;
@@ -582,7 +605,7 @@ function createAlertModal(message, alertId, debugInfo, resolve, sections, sectio
     margin-bottom: 12px;
     color: #1a1a1a;
   `;
-  title.textContent = `🚨 Keyword Alert`;
+  title.textContent = buildAlertTitle(debugInfo, showTriggerNames);
 
   // Resolve sections from any historical format
   const contents = resolveSectionContents(sections, message);

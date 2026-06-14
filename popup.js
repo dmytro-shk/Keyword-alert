@@ -64,6 +64,7 @@ const alertModal = document.getElementById('alert-modal');
 // Debug mode and alert style elements
 const debugModeCheckbox = document.getElementById('debug-mode-checkbox');
 const alertStyleSelect = document.getElementById('alert-style-select');
+const showTriggerNamesSelect = document.getElementById('show-trigger-names-select');
 
 // Initialize app
 function init() {
@@ -192,6 +193,10 @@ function setupEventHandlers() {
   // Alert style functionality
   alertStyleSelect.addEventListener('change', saveAlertStyleSetting);
   loadAlertStyleSetting();
+
+  // Show trigger names functionality
+  showTriggerNamesSelect.addEventListener('change', saveShowTriggerNamesSetting);
+  loadShowTriggerNamesSetting();
 
   // Global section names — auto-save on change
   [globalSectionName1, globalSectionName2, globalSectionName3].forEach(el => {
@@ -1825,7 +1830,15 @@ function loadAlertStyleSetting() {
   });
 }
 
-// Functions are now handled via event delegation, no need for global assignment
+function saveShowTriggerNamesSetting() {
+  chrome.storage.local.set({ showTriggerNames: showTriggerNamesSelect.value });
+}
+
+function loadShowTriggerNamesSetting() {
+  chrome.storage.local.get(['showTriggerNames'], (result) => {
+    showTriggerNamesSelect.value = result.showTriggerNames || 'none';
+  });
+}
 
 // Initialize when DOM is ready
 init();
