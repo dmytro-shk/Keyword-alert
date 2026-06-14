@@ -1691,9 +1691,9 @@ function toggleExpanded() {
   } else {
     // Reset to original compact size
     document.body.style.width = '400px';
-    document.body.style.height = 'auto';
+    document.body.style.height = '560px';
     document.body.style.maxHeight = 'none';
-    document.body.style.minHeight = '500px';
+    document.body.style.minHeight = 'auto';
 
     // Remove expanded class to reset scrollable containers
     document.body.classList.remove('expanded');

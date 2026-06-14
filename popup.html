@@ -33,7 +33,7 @@
 
       body {
         width: 400px;
-        height: 500px;
+        height: 560px;
         margin: 0;
         padding: 0;
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
@@ -82,12 +82,12 @@
 
       .tab {
         flex: 1;
-        padding: 12px 0;
+        padding: 10px 0;
         text-align: center;
         border: none;
         background: transparent;
         color: var(--text-secondary);
-        font-size: 13px;
+        font-size: 12px;
         font-weight: 500;
         font-family: inherit;
         cursor: pointer;
@@ -147,7 +147,8 @@
 
       .section-saved-triggers .scrollable {
         flex: 1;
-        min-height: 150px; /* Ensure some minimum visible content */
+        min-height: 150px;
+        max-height: none;
       }
 
       .section-title {
@@ -632,44 +633,105 @@
         background: #FF8C00;
         cursor: help;
       }
+
+      /* Settings tab */
+      .settings-section {
+        background: var(--surface-secondary);
+        border: 1px solid var(--border-secondary);
+        border-radius: var(--radius-small);
+        padding: 14px;
+        margin-bottom: 12px;
+        box-shadow: var(--shadow);
+      }
+
+      .settings-section-title {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        margin: 0 0 10px 0;
+      }
+
+      .setting-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 8px 0;
+      }
+
+      .setting-row:not(:last-child) {
+        border-bottom: 1px solid var(--border-secondary);
+        padding-bottom: 12px;
+        margin-bottom: 4px;
+      }
+
+      .setting-label {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .setting-name {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-primary);
+      }
+
+      .setting-description {
+        font-size: 11px;
+        color: var(--text-secondary);
+        margin-top: 2px;
+        line-height: 1.3;
+      }
+
+      .setting-control {
+        padding: 5px 8px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-small);
+        background: var(--background);
+        color: var(--text-primary);
+        font-size: 13px;
+        font-family: inherit;
+        flex-shrink: 0;
+      }
+
+      .setting-control:focus {
+        outline: none;
+        border-color: var(--primary);
+      }
+
+      .setting-toggle {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--primary);
+        flex-shrink: 0;
+        cursor: pointer;
+      }
+
+      .setting-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
     </style>
   </head>
   <body>
     <div class="header">
       <h1>Keyword Alert</h1>
-      <div class="header-credits" style="font-size: 8px; color: var(--text-tertiary); text-align: center;">
-        Icon by <a href="https://www.flaticon.com/free-icon/siren_18468278" target="_blank" style="color: var(--text-tertiary);">Flaticon</a>
-      </div>
-      <div class="debug-setting" style="margin: 8px 0; text-align: center;">
-        <label style="font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; justify-content: center; gap: 6px;">
-          <input type="checkbox" id="debug-mode-checkbox" style="accent-color: var(--primary);">
-          🐛 Debug Mode (shows trigger details in alerts)
-        </label>
-      </div>
-      <div class="alert-style-setting" style="margin: 8px 0; text-align: center;">
-        <label style="font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; justify-content: center; gap: 6px;">
-          Alert Style:
-          <select id="alert-style-select" style="accent-color: var(--primary); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--background); color: var(--text-primary); font-size: 12px;">
-            <option value="native">Native (Browser Alert)</option>
-            <option value="custom">Custom (Suppressable)</option>
-          </select>
-        </label>
-      </div>
-      <div class="import-export-buttons">
-        <button id="expand-btn" class="btn btn-secondary">⛶ Expand</button>
-        <button id="export-btn" class="btn btn-secondary">📤 Export</button>
-        <button id="import-btn" class="btn btn-secondary">📥 Import</button>
-        <button id="clear-all-btn" class="btn btn-danger" style="background: var(--destructive);">🗑️ Clear All</button>
-        <input type="file" id="import-file" accept=".json" style="display: none;">
+      <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 6px;">
+        <button id="expand-btn" class="btn btn-secondary" style="font-size: 11px; padding: 3px 10px; min-height: 24px;">⛶ Expand</button>
+        <span style="font-size: 8px; color: var(--text-tertiary);">Icon by <a href="https://www.flaticon.com/free-icon/siren_18468278" target="_blank" style="color: var(--text-tertiary);">Flaticon</a></span>
       </div>
     </div>
 
     <div class="main-content">
       <div class="tabs">
-        <button class="tab active" data-tab="main-triggers">Main Triggers</button>
+        <button class="tab active" data-tab="main-triggers">Main</button>
         <button class="tab" data-tab="secondary-triggers">Secondary</button>
         <button class="tab" data-tab="alerts">Alerts</button>
-        <button class="tab" data-tab="how-it-works">How It Works</button>
+        <button class="tab" data-tab="how-it-works">Help</button>
+        <button class="tab" data-tab="settings">Settings</button>
       </div>
 
     <!-- Main Triggers Tab -->
@@ -812,7 +874,7 @@
 
           <h4 style="color: var(--primary); margin-top: 20px;">🔔 5. Alert Styles</h4>
           <p style="line-height: 1.6; color: var(--text-primary);">
-            Choose how alerts are displayed using the <strong>Alert Style</strong> selector in the header:
+            Choose how alerts are displayed using the <strong>Alert Style</strong> selector in the <strong>Settings</strong> tab:
           </p>
           <ul style="line-height: 1.8; color: var(--text-secondary); margin-left: 20px;">
             <li><strong>Native:</strong> Standard browser alert dialog (simple, always on top)</li>
@@ -826,12 +888,12 @@
 
           <h4 style="color: var(--primary); margin-top: 20px;">🐛 7. Debug Mode</h4>
           <p style="line-height: 1.6; color: var(--text-primary);">
-            Enable debug mode in settings to see which keywords matched when an alert triggers. This helps you fine-tune your triggers.
+            Enable <strong>Debug Mode</strong> in the <strong>Settings</strong> tab to see which keywords matched when an alert triggers. Useful for fine-tuning triggers.
           </p>
 
           <h4 style="color: var(--primary); margin-top: 20px;">💾 8. Import/Export</h4>
           <p style="line-height: 1.6; color: var(--text-primary);">
-            Export your configuration to back up or share with others. Import can merge with existing data or replace it entirely.
+            Available in the <strong>Settings</strong> tab — export your configuration to back up or share, and import to merge or replace.
           </p>
 
           <div style="margin-top: 30px; padding: 15px; background: var(--surface); border-radius: 8px; border-left: 4px solid var(--primary);">
@@ -840,6 +902,47 @@
             </p>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Settings Tab -->
+    <div id="settings-content" class="tab-content" style="overflow-y: auto;">
+      <div class="settings-section">
+        <div class="settings-section-title">Alert Notification</div>
+        <div class="setting-row">
+          <div class="setting-label">
+            <div class="setting-name">Alert Style</div>
+            <div class="setting-description">Native: browser alert dialog. Custom: styled modal with 1/2/5 min suppress buttons.</div>
+          </div>
+          <select id="alert-style-select" class="setting-control">
+            <option value="native">Native</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Debug</div>
+        <div class="setting-row">
+          <div class="setting-label">
+            <div class="setting-name">Debug Mode</div>
+            <div class="setting-description">Show matched keyword details inside alert messages to help fine-tune triggers</div>
+          </div>
+          <input type="checkbox" id="debug-mode-checkbox" class="setting-toggle">
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Data Management</div>
+        <div class="setting-actions">
+          <button id="export-btn" class="btn btn-secondary">📤 Export</button>
+          <button id="import-btn" class="btn btn-secondary">📥 Import</button>
+          <button id="clear-all-btn" class="btn btn-danger">🗑️ Clear All</button>
+        </div>
+        <input type="file" id="import-file" accept=".json" style="display: none;">
+        <p style="font-size: 11px; color: var(--text-secondary); margin: 10px 0 0 0; line-height: 1.5;">
+          Export backs up all triggers and alerts to a JSON file. Import supports merge (keep existing + add new) or full replace.
+        </p>
       </div>
     </div>
     </div>
