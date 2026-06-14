@@ -794,7 +794,7 @@ function createAlertModal(message, alertId, debugInfo, resolve, sections, sectio
 
 function createSuppressButton(label, minutes, alertId, overlay, resolve, onCleanup) {
   const btn = document.createElement('button');
-  btn.textContent = `Suppress ${label}`;
+  btn.textContent = `Suppress for ${label}`;
   btn.style.cssText = `
     padding: 10px 16px;
     background: #6c757d;
@@ -1081,15 +1081,20 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
   window.addEventListener('DOMContentLoaded', () => setTimeout(checkPage, 50));
 }
 
-// handle SPA soft navigations triggered by background
+// handle SPA soft navigations and manual retrigger from popup
 chrome.runtime.onMessage.addListener(msg => {
   if (msg && msg.type === 'url-changed') {
-    // allow alerting again on new SPA "page"
     alerted = false;
-    shownAlerts.clear(); // Reset shown alerts for new page
+    shownAlerts.clear();
     console.log('🔄 URL changed - reset alert tracking');
-    // small delay to allow new content to render
     setTimeout(checkPage, 150);
+  }
+  if (msg && msg.type === 'retrigger') {
+    alerted = false;
+    shownAlerts.clear();
+    window.settingsLogged = false;
+    console.log('🔄 Manual retrigger from popup');
+    checkPage();
   }
 });
 

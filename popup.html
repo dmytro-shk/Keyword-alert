@@ -728,9 +728,12 @@
   </head>
   <body>
     <div class="header">
-      <div style="display: flex; align-items: center; justify-content: space-between;">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
         <h1>Keyword Alert</h1>
-        <button id="expand-btn" class="btn btn-secondary">⛶ Expand</button>
+        <div style="display: flex; gap: 5px; align-items: center;">
+          <button id="retrigger-btn" class="btn btn-secondary" title="Re-check the current page for matching alerts">🔄 Retrigger</button>
+          <button id="expand-btn" class="btn btn-secondary">⛶ Expand</button>
+        </div>
       </div>
     </div>
 

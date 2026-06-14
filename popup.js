@@ -48,6 +48,7 @@ const secondaryTriggerCount = document.getElementById('secondary-trigger-count')
 
 // Import/Export elements
 const expandBtn = document.getElementById('expand-btn');
+const retriggerBtn = document.getElementById('retrigger-btn');
 const exportBtn = document.getElementById('export-btn');
 const importBtn = document.getElementById('import-btn');
 const importFile = document.getElementById('import-file');
@@ -178,6 +179,23 @@ function setupEventHandlers() {
 
   // Modal close handlers
   setupModalCloseHandlers();
+
+  // Retrigger alerts on current page
+  retriggerBtn.addEventListener('click', () => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (!tabs[0]) return;
+      chrome.tabs.sendMessage(tabs[0].id, { type: 'retrigger' }, () => {
+        void chrome.runtime.lastError; // suppress "no receiver" errors
+      });
+      const orig = retriggerBtn.textContent;
+      retriggerBtn.textContent = '✓ Done';
+      retriggerBtn.disabled = true;
+      setTimeout(() => {
+        retriggerBtn.textContent = orig;
+        retriggerBtn.disabled = false;
+      }, 1500);
+    });
+  });
 
   // Import/Export functionality
   expandBtn.addEventListener('click', toggleExpanded);
