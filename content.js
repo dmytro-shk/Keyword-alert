@@ -744,13 +744,9 @@ function createAlertModal(message, alertId, debugInfo, resolve, sections, sectio
   };
 
   const suppress1 = createSuppressButton('1 min', 1, alertId, overlay, resolve);
-  const suppress2 = createSuppressButton('2 min', 2, alertId, overlay, resolve);
-  const suppress5 = createSuppressButton('5 min', 5, alertId, overlay, resolve);
 
   buttonContainer.appendChild(closeBtn);
   buttonContainer.appendChild(suppress1);
-  buttonContainer.appendChild(suppress2);
-  buttonContainer.appendChild(suppress5);
 
   modal.appendChild(title);
   modal.appendChild(sectionsWrap);

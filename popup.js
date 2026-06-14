@@ -527,14 +527,17 @@ function renderMainTriggers(mainTriggers, alerts) {
         : '';
 
       div.innerHTML = `
-        <div class="item-header">
-          <div class="item-title">${trigger.name}</div>
-          ${usageBadge}
-        </div>
-        <div class="item-keywords">${keywordText}</div>
-        <div class="item-actions">
-          <button class="btn btn-secondary edit-main-trigger" data-trigger-id="${trigger.id}">Edit</button>
-          <button class="btn btn-danger delete-main-trigger" data-trigger-id="${trigger.id}" ${isInUse ? 'title="Cannot delete - trigger is in use"' : ''}>Delete</button>
+        <div class="item-row">
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:5px;">
+              <span class="item-title">${trigger.name}</span>${usageBadge}
+            </div>
+            <div class="item-keywords">${keywordText}</div>
+          </div>
+          <div class="item-actions">
+            <button class="btn btn-secondary edit-main-trigger" data-trigger-id="${trigger.id}">Edit</button>
+            <button class="btn btn-danger delete-main-trigger" data-trigger-id="${trigger.id}" ${isInUse ? 'title="In use"' : ''}>Del</button>
+          </div>
         </div>
       `;
 
@@ -763,14 +766,17 @@ function renderSecondaryTriggers(secondaryTriggers, alerts) {
         : '';
 
       div.innerHTML = `
-        <div class="item-header">
-          <div class="item-title">${trigger.name}</div>
-          ${usageBadge}
-        </div>
-        <div class="item-keywords">${keywordText}</div>
-        <div class="item-actions">
-          <button class="btn btn-secondary edit-secondary-trigger" data-trigger-id="${trigger.id}">Edit</button>
-          <button class="btn btn-danger delete-secondary-trigger" data-trigger-id="${trigger.id}" ${isInUse ? 'title="Cannot delete - trigger is in use"' : ''}>Delete</button>
+        <div class="item-row">
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:5px;">
+              <span class="item-title">${trigger.name}</span>${usageBadge}
+            </div>
+            <div class="item-keywords">${keywordText}</div>
+          </div>
+          <div class="item-actions">
+            <button class="btn btn-secondary edit-secondary-trigger" data-trigger-id="${trigger.id}">Edit</button>
+            <button class="btn btn-danger delete-secondary-trigger" data-trigger-id="${trigger.id}" ${isInUse ? 'title="In use"' : ''}>Del</button>
+          </div>
         </div>
       `;
       secondaryTriggersList.appendChild(div);
@@ -1232,15 +1238,15 @@ function renderFilteredAlerts(mainTriggers, secondaryTriggers) {
       : '';
 
     div.innerHTML = `
-      <div class="item-title">${contents[0] || alert.message}</div>
-      <div style="margin-bottom: 8px;">
-        <strong>Main:</strong> ${selectedMainTriggerNames.join(', ')}
+      <div class="item-row">
+        <div class="item-title" style="flex:1">${contents[0] || alert.message}</div>
+        <div class="item-actions">
+          <button class="btn btn-secondary edit-alert" data-alert-id="${alert.id}">Edit</button>
+          <button class="btn btn-danger delete-alert" data-alert-id="${alert.id}">Del</button>
+        </div>
       </div>
-      ${selectedSecondaryTriggerNames.length > 0 ? `<div style="margin-bottom: 8px;"><strong>Secondary:</strong> ${selectedSecondaryTriggerNames.join(', ')}</div>` : ''}
-      ${sectionsNote}
-      <div class="item-actions">
-        <button class="btn btn-secondary edit-alert" data-alert-id="${alert.id}">Edit</button>
-        <button class="btn btn-danger delete-alert" data-alert-id="${alert.id}">Delete</button>
+      <div class="item-meta">
+        <strong>Main:</strong> ${selectedMainTriggerNames.join(', ')}${selectedSecondaryTriggerNames.length > 0 ? ` · <strong>Sec:</strong> ${selectedSecondaryTriggerNames.join(', ')}` : ''}${filledSections > 1 ? ` · 📋 ${filledSections} sections` : ''}
       </div>
     `;
     alertsList.appendChild(div);
@@ -1720,12 +1726,14 @@ function setupModalCloseHandlers() {
     });
   });
 
-  // Close on Escape key
+  // Escape: close modal if open, otherwise close popup
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       const activeModal = document.querySelector('.modal-overlay.active');
       if (activeModal) {
         closeModal(activeModal);
+      } else {
+        window.close();
       }
     }
   });

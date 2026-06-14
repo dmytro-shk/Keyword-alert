@@ -51,15 +51,14 @@
 
       .header {
         background: var(--surface);
-        padding: 12px 16px;
+        padding: 9px 14px;
         border-bottom: 1px solid var(--border-secondary);
-        text-align: center;
         flex-shrink: 0;
       }
 
       .header h1 {
         margin: 0;
-        font-size: 16px;
+        font-size: 15px;
         font-weight: 600;
         color: var(--text-primary);
       }
@@ -82,16 +81,16 @@
 
       .tab {
         flex: 1;
-        padding: 10px 0;
+        padding: 8px 0;
         text-align: center;
         border: none;
         background: transparent;
         color: var(--text-secondary);
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 500;
         font-family: inherit;
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: color 0.15s ease;
         position: relative;
       }
 
@@ -116,7 +115,7 @@
 
       .tab-content {
         display: none;
-        padding: 16px;
+        padding: 10px 12px;
         background: var(--background);
         height: 100%;
         box-sizing: border-box;
@@ -128,45 +127,45 @@
       }
 
       .section {
-        background: var(--surface-secondary);
+        background: var(--background);
         border: 1px solid var(--border-secondary);
-        border-radius: var(--radius-small);
-        padding: 14px;
-        margin-bottom: 12px;
-        box-shadow: var(--shadow);
+        border-radius: 8px;
+        padding: 10px 12px;
+        margin-bottom: 8px;
       }
 
-      /* Make the saved triggers sections flexible and grow to fill available space */
       .section-saved-triggers {
         flex: 1;
         display: flex;
         flex-direction: column;
-        margin-bottom: 0; /* Remove bottom margin for last section */
-        min-height: 200px; /* Minimum height to prevent too small containers */
+        margin-bottom: 0;
+        min-height: 160px;
       }
 
       .section-saved-triggers .scrollable {
         flex: 1;
-        min-height: 150px;
+        min-height: 120px;
         max-height: none;
       }
 
       .section-title {
-        font-size: 14px;
+        font-size: 11px;
         font-weight: 600;
-        color: var(--text-primary);
-        margin: 0 0 4px 0;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        margin: 0 0 8px 0;
       }
 
       .section-subtitle {
-        font-size: 12px;
+        font-size: 11px;
         color: var(--text-secondary);
-        margin: 0 0 12px 0;
-        line-height: 1.3;
+        margin: 0 0 10px 0;
+        line-height: 1.4;
       }
 
       .form-group {
-        margin-bottom: 12px;
+        margin-bottom: 8px;
       }
 
       .form-group:last-child {
@@ -175,21 +174,21 @@
 
       .form-label {
         display: block;
-        font-size: 13px;
+        font-size: 12px;
         font-weight: 500;
         color: var(--text-primary);
-        margin-bottom: 6px;
+        margin-bottom: 4px;
       }
 
       .form-input {
         width: 100%;
-        padding: 8px 12px;
+        padding: 6px 10px;
         border: 1px solid var(--border);
-        border-radius: var(--radius-small);
+        border-radius: 6px;
         background: var(--background);
-        font-size: 13px;
+        font-size: 12px;
         font-family: inherit;
-        transition: all 0.2s ease;
+        transition: border-color 0.15s ease;
       }
 
       .form-input:focus {
@@ -247,15 +246,15 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        padding: 6px 12px;
+        padding: 4px 10px;
         border: none;
-        border-radius: var(--radius-small);
-        font-size: 13px;
+        border-radius: 6px;
+        font-size: 12px;
         font-weight: 500;
         font-family: inherit;
         cursor: pointer;
-        transition: all 0.2s ease;
-        min-height: 32px;
+        transition: background 0.15s ease;
+        min-height: 26px;
         text-decoration: none;
       }
 
@@ -266,8 +265,6 @@
 
       .btn-primary:hover {
         background: var(--primary-hover);
-        transform: translateY(-1px);
-        box-shadow: var(--shadow-hover);
       }
 
       .btn-secondary {
@@ -278,15 +275,11 @@
 
       .btn-secondary:hover {
         background: var(--border-secondary);
-        transform: translateY(-1px);
-        box-shadow: var(--shadow);
       }
 
       .btn-danger {
         background: var(--destructive);
         color: white;
-        padding: 4px 8px;
-        min-height: 28px;
       }
 
       .btn-danger:hover {
@@ -305,71 +298,85 @@
       .btn:disabled {
         opacity: 0.5;
         cursor: not-allowed;
-        transform: none !important;
       }
 
       .btn-icon {
         padding: 4px;
-        min-height: 28px;
-        width: 28px;
+        min-height: 26px;
+        width: 26px;
       }
 
       .actions {
         display: flex;
-        gap: 8px;
-        margin-top: 12px;
+        gap: 6px;
+        margin-top: 10px;
         flex-wrap: wrap;
       }
 
       .trigger-item, .alert-item {
-        background: var(--surface-secondary);
+        background: var(--background);
         border: 1px solid var(--border-secondary);
-        border-radius: var(--radius-small);
-        padding: 10px;
-        margin-bottom: 8px;
-        transition: all 0.2s ease;
+        border-radius: 6px;
+        padding: 7px 9px;
+        margin-bottom: 5px;
+        transition: border-color 0.15s ease;
       }
 
       .trigger-item:hover, .alert-item:hover {
         border-color: var(--border);
-        box-shadow: var(--shadow);
+      }
+
+      .item-row {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 6px;
       }
 
       .item-title {
-        font-size: 13px;
+        font-size: 12px;
         font-weight: 600;
         color: var(--text-primary);
-        margin-bottom: 4px;
+        line-height: 1.3;
+        word-break: break-word;
+      }
+
+      .item-meta {
+        font-size: 11px;
+        color: var(--text-secondary);
+        margin-top: 3px;
+        line-height: 1.3;
       }
 
       .item-keywords {
-        font-size: 12px;
+        font-size: 11px;
         color: var(--text-secondary);
         font-family: 'SF Mono', Monaco, monospace;
         background: var(--surface);
-        padding: 4px 8px;
-        border-radius: 4px;
-        margin-bottom: 8px;
+        padding: 2px 6px;
+        border-radius: 3px;
+        margin-top: 3px;
       }
 
       .item-actions {
         display: flex;
-        gap: 6px;
+        gap: 4px;
+        flex-shrink: 0;
       }
 
       .checkbox-group {
         border: 1px solid var(--border-secondary);
-        border-radius: var(--radius-small);
-        padding: 8px;
+        border-radius: 6px;
+        padding: 5px 8px;
         background: var(--surface);
-        max-height: 120px;
+        max-height: 90px;
         overflow-y: auto;
       }
 
       .checkbox-item {
         display: flex;
         align-items: center;
-        padding: 4px 0;
+        padding: 3px 0;
       }
 
       .checkbox-item:not(:last-child) {
@@ -392,7 +399,7 @@
 
       .empty-state {
         text-align: center;
-        padding: 20px 16px;
+        padding: 16px 12px;
         color: var(--text-secondary);
       }
 
@@ -470,18 +477,18 @@
       }
 
       .filter-section {
-        background: rgba(0, 122, 255, 0.05);
-        border: 1px solid rgba(0, 122, 255, 0.1);
-        border-radius: var(--radius-small);
-        padding: 10px;
-        margin-bottom: 12px;
+        background: var(--surface);
+        border: 1px solid var(--border-secondary);
+        border-radius: 6px;
+        padding: 7px 8px;
+        margin-bottom: 8px;
       }
 
       .filter-row {
         display: flex;
-        gap: 8px;
+        gap: 6px;
         align-items: center;
-        margin-bottom: 8px;
+        margin-bottom: 5px;
       }
 
       .filter-row:last-child {
@@ -585,29 +592,23 @@
       .create-button {
         display: flex;
         align-items: center;
-        gap: 8px;
-        margin-bottom: 16px;
-        padding: 10px 16px;
+        gap: 5px;
+        margin-bottom: 8px;
+        padding: 6px 14px;
         background: var(--primary);
         color: white;
         border: none;
-        border-radius: var(--radius-small);
-        font-size: 14px;
+        border-radius: 7px;
+        font-size: 12px;
         font-weight: 500;
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: background 0.15s ease;
         width: 100%;
         justify-content: center;
       }
 
       .create-button:hover {
         background: var(--primary-hover);
-        transform: translateY(-1px);
-      }
-
-      .create-button svg {
-        width: 16px;
-        height: 16px;
       }
 
       /* Usage badge styles */
@@ -726,10 +727,10 @@
     </style>
   </head>
   <body>
-    <div class="header" style="padding: 10px 16px;">
+    <div class="header">
       <div style="display: flex; align-items: center; justify-content: space-between;">
-        <h1 style="margin: 0;">Keyword Alert</h1>
-        <button id="expand-btn" class="btn btn-secondary" style="font-size: 11px; padding: 3px 10px; min-height: 24px;">⛶ Expand</button>
+        <h1>Keyword Alert</h1>
+        <button id="expand-btn" class="btn btn-secondary">⛶ Expand</button>
       </div>
     </div>
 
