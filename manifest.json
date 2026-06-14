@@ -2,6 +2,7 @@
   "manifest_version": 3,
   "name": "Keyword Alert",
   "version": "1.0.0",
+  "author": "Dmytro Shkatula",
   "description": "Monitor websites for specific keywords and get instant alerts. Icon from Flaticon.",
   "permissions": ["storage", "webNavigation"],
   "icons": {
