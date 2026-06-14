@@ -331,7 +331,7 @@ window.testDebugMode = function() {
       }
     });
 
-    const displayMessage = `🚨 Alert 1: ${testAlert.message}\n\n🐛 Debug Info:\n• ${debugLines.join('\n• ')}`;
+    const displayMessage = `${testAlert.message}\n\n🐛 Debug Info:\n• ${debugLines.join('\n• ')}`;
 
     console.log('Sample enhanced debug alert format:');
     console.log(displayMessage);
@@ -888,29 +888,28 @@ function checkPage() {
         chrome.storage.local.get(['debugMode'], (result) => {
           const debugMode = result.debugMode || false;
 
-          // Show alerts sequentially
+          // Show alerts sequentially, deduplicating by message text
+          const shownMessages = new Set();
           let delay = 0;
           triggeredAlerts.forEach((alertObj, index) => {
+            if (shownMessages.has(alertObj.message)) return;
+            shownMessages.add(alertObj.message);
+
             setTimeout(async () => {
               DebugLogger.log('ALERT', `Displaying: "${alertObj.message}"`);
 
               let displayMessage;
               if (debugMode && alertObj.debugInfo && alertObj.debugInfo.length > 0) {
-                // Format detailed debug message with keywords
                 const debugLines = alertObj.debugInfo.map(combo => {
                   if (combo.secondaryTrigger) {
-                    // Main + Secondary combination
                     return `Main: "${combo.mainTrigger}" (${combo.mainKeywords.join(', ')}) + Secondary: "${combo.secondaryTrigger}" (${combo.secondaryKeywords.join(', ')})`;
                   } else {
-                    // Main-only combination
                     return `Main: "${combo.mainTrigger}" (${combo.mainKeywords.join(', ')})`;
                   }
                 });
-
-                displayMessage = `Alert ${index + 1}: ${alertObj.message}\n\n🐛 Debug Info:\n• ${debugLines.join('\n• ')}`;
+                displayMessage = `${alertObj.message}\n\n🐛 Debug Info:\n• ${debugLines.join('\n• ')}`;
               } else {
-                // Standard message
-                displayMessage = `Alert ${index + 1}: ${alertObj.message}`;
+                displayMessage = alertObj.message;
               }
 
               await showCustomAlert(displayMessage, alertObj.id, alertObj.debugInfo, index);
