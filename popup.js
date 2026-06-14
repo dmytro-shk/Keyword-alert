@@ -879,6 +879,7 @@ function saveAlert() {
 
   chrome.storage.local.get(['alerts'], res => {
     let alerts = res.alerts || [];
+    const wasEditing = !!editingAlertId;
 
     if (editingAlertId) {
       // Update existing alert
@@ -893,6 +894,7 @@ function saveAlert() {
       }
       editingAlertId = null;
       saveAlertBtn.textContent = 'Save Alert';
+      cancelAlertEditBtn.style.display = 'none';
     } else {
       // Create new alert
       const newAlert = {
@@ -905,13 +907,12 @@ function saveAlert() {
     }
 
     chrome.storage.local.set({ alerts }, () => {
-      const isEditing = editingAlertId !== null;
-      alert(isEditing ? 'Alert updated!' : 'Alert saved! You can create another one with the same triggers or change selections.');
+      alert(wasEditing ? 'Alert updated!' : 'Alert saved! You can create another one with the same triggers or change selections.');
 
       // Only clear the message text, keep checkboxes for easier multiple alert creation
       alertMessageTextArea.value = '';
 
-      if (isEditing) {
+      if (wasEditing) {
         // If we were editing, clear everything and reset to create mode
         clearAlertForm();
       }

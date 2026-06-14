@@ -649,7 +649,7 @@
       <div class="alert-style-setting" style="margin: 8px 0; text-align: center;">
         <label style="font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; justify-content: center; gap: 6px;">
           Alert Style:
-          <select id="alert-style-select" style="accent-color: var(--primary); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--background-primary); color: var(--text-primary); font-size: 12px;">
+          <select id="alert-style-select" style="accent-color: var(--primary); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--background); color: var(--text-primary); font-size: 12px;">
             <option value="native">Native (Browser Alert)</option>
             <option value="custom">Custom (Suppressable)</option>
           </select>
@@ -770,7 +770,7 @@
 
     <!-- How It Works Tab -->
     <div id="how-it-works-content" class="tab-content">
-      <div class="section">
+      <div class="section" style="flex: 1; overflow-y: auto;">
         <div class="section-title" style="text-align: center; margin-bottom: 20px;">How Keyword Alert Works</div>
 
         <div style="padding: 0 10px; max-width: 600px; margin: 0 auto;">
@@ -810,17 +810,31 @@
             <strong>Example:</strong> "error" OR "warning" AND "critical" matches pages with either "error" or "warning", but "critical" must also be present.
           </p>
 
-          <h4 style="color: var(--primary); margin-top: 20px;">🐛 5. Debug Mode</h4>
+          <h4 style="color: var(--primary); margin-top: 20px;">🔔 5. Alert Styles</h4>
+          <p style="line-height: 1.6; color: var(--text-primary);">
+            Choose how alerts are displayed using the <strong>Alert Style</strong> selector in the header:
+          </p>
+          <ul style="line-height: 1.8; color: var(--text-secondary); margin-left: 20px;">
+            <li><strong>Native:</strong> Standard browser alert dialog (simple, always on top)</li>
+            <li><strong>Custom (Suppressable):</strong> A styled modal with suppress buttons — dismiss the alert and silence it for 1, 2, or 5 minutes without it reappearing</li>
+          </ul>
+
+          <h4 style="color: var(--primary); margin-top: 20px;">🔕 6. Suppress Alerts</h4>
+          <p style="line-height: 1.6; color: var(--text-primary);">
+            When using the <strong>Custom</strong> alert style, each alert shows "Suppress 1 min / 2 min / 5 min" buttons. Clicking one dismisses the alert and prevents it from re-triggering for that duration — useful when you need to stay on a matching page without repeated interruptions.
+          </p>
+
+          <h4 style="color: var(--primary); margin-top: 20px;">🐛 7. Debug Mode</h4>
           <p style="line-height: 1.6; color: var(--text-primary);">
             Enable debug mode in settings to see which keywords matched when an alert triggers. This helps you fine-tune your triggers.
           </p>
 
-          <h4 style="color: var(--primary); margin-top: 20px;">💾 6. Import/Export</h4>
+          <h4 style="color: var(--primary); margin-top: 20px;">💾 8. Import/Export</h4>
           <p style="line-height: 1.6; color: var(--text-primary);">
             Export your configuration to back up or share with others. Import can merge with existing data or replace it entirely.
           </p>
 
-          <div style="margin-top: 30px; padding: 15px; background: var(--background-secondary); border-radius: 8px; border-left: 4px solid var(--primary);">
+          <div style="margin-top: 30px; padding: 15px; background: var(--surface); border-radius: 8px; border-left: 4px solid var(--primary);">
             <p style="margin: 0; color: var(--text-primary); line-height: 1.6;">
               <strong>💡 Tip:</strong> Start simple with one main trigger and one alert. Add secondary triggers and more complex logic as needed.
             </p>

@@ -11,6 +11,7 @@ const DebugLogger = {
   session: Date.now(),
 
   log(category, message, data = null) {
+    if (!DEBUG) return;
     const timestamp = new Date().toLocaleTimeString();
     const prefix = `🔍 [${category}] ${timestamp}:`;
 
@@ -22,6 +23,7 @@ const DebugLogger = {
   },
 
   logSettings() {
+    if (!DEBUG) return;
     chrome.storage.local.get(['alerts', 'mainTriggers', 'secondaryTriggers'], res => {
       console.log('\n════════════════════════════════════════');
       console.log('🔧 KEYWORD ALERT EXTENSION - DEBUG SETTINGS');
@@ -72,20 +74,23 @@ const DebugLogger = {
   },
 
   logPageCheck(pageText) {
+    if (!DEBUG) return;
     console.log('\n🔍 PAGE CHECK STARTED');
     console.log(`📄 Page text length: ${pageText.length} chars`);
-    console.log(`📄 First 200 chars: "${pageText.substring(0, 200)}..."`);
-    if (pageText.length > 200) {
-      console.log(`📄 Last 100 chars: "...${pageText.substring(pageText.length - 100)}"`);
+    if (DETAILED_DEBUG) {
+      console.log(`📄 First 200 chars: "${pageText.substring(0, 200)}..."`);
+      if (pageText.length > 200) {
+        console.log(`📄 Last 100 chars: "...${pageText.substring(pageText.length - 100)}"`);
+      }
+      console.log('\n📄 FULL PAGE TEXT (for debugging):');
+      console.log('════════════════════════════════════════');
+      console.log(pageText);
+      console.log('════════════════════════════════════════\n');
     }
-
-    console.log('\n📄 FULL PAGE TEXT (for debugging):');
-    console.log('════════════════════════════════════════');
-    console.log(pageText);
-    console.log('════════════════════════════════════════\n');
   },
 
   logAlertEvaluation(alertIndex, alert, result) {
+    if (!DEBUG) return;
     const status = result.triggered ? '✅ TRIGGERED' : '❌ FAILED';
     console.log(`\n🚨 Alert ${alertIndex + 1}/? "${alert.message}" - ${status}`);
 
@@ -130,6 +135,7 @@ const DebugLogger = {
   },
 
   logFinalResults(totalChecked, totalTriggered, triggeredAlerts) {
+    if (!DEBUG) return;
     console.log('\n🏁 FINAL RESULTS');
     console.log(`📊 Alerts checked: ${totalChecked}`);
     console.log(`🎯 Alerts triggered: ${totalTriggered}`);
