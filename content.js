@@ -476,6 +476,7 @@ let shownAlerts = new Set(); // Track which specific alerts have been shown
 let lastCheckTime = 0; // Track last check time for debouncing
 const CHECK_DEBOUNCE_MS = 1000; // Minimum time between checks
 const suppressedAlerts = new Map(); // Track suppressed alerts: alertId -> expiryTime
+const onScreen = new Set(); // Track message texts of modals currently visible on page
 
 // Restore suppress state from storage so it survives page reloads
 function loadSuppressState() {
@@ -554,6 +555,11 @@ function showCustomAlert(message, alertId, debugInfo, sections) {
         window.alert(message);
         resolve(null);
       } else {
+        if (onScreen.has(message)) {
+          resolve(null); // same alert already visible — drop this one
+          return;
+        }
+        onScreen.add(message);
         const modal = createAlertModal(message, alertId, debugInfo, resolve, sections, sectionNames, debugMode, showTriggerNames);
         document.body.appendChild(modal);
       }
@@ -736,6 +742,7 @@ function createAlertModal(message, alertId, debugInfo, resolve, sections, sectio
 
   const dismissModal = () => {
     document.removeEventListener('keydown', onKeyDown);
+    onScreen.delete(message);
     document.body.removeChild(overlay);
     resolve(null);
   };
@@ -749,6 +756,7 @@ function createAlertModal(message, alertId, debugInfo, resolve, sections, sectio
 
   const suppress1 = createSuppressButton('1 min', 1, alertId, overlay, resolve, () => {
     document.removeEventListener('keydown', onKeyDown);
+    onScreen.delete(message);
   });
 
   // Button order: Suppress → Copy All → OK
