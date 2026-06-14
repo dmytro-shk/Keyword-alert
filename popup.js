@@ -1,3 +1,12 @@
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // Tab management
 const tabs = document.querySelectorAll('.tab');
 const tabContents = document.querySelectorAll('.tab-content');
@@ -21,11 +30,15 @@ const secondaryTriggersList = document.getElementById('secondary-triggers-list')
 // Alerts tab elements
 const alertMainTriggersDiv = document.getElementById('alert-main-triggers');
 const alertSecondaryTriggersDiv = document.getElementById('alert-secondary-triggers');
-const alertMessageTextArea = document.getElementById('alert-message');
 const saveAlertBtn = document.getElementById('save-alert');
 const cancelAlertEditBtn = document.getElementById('cancel-alert-edit');
 const clearAlertFormBtn = document.getElementById('clear-alert-form');
 const alertsList = document.getElementById('alerts-list');
+
+// Global section name inputs (Settings tab)
+const globalSectionName1 = document.getElementById('global-section-name-1');
+const globalSectionName2 = document.getElementById('global-section-name-2');
+const globalSectionName3 = document.getElementById('global-section-name-3');
 
 // Filter elements
 const alertFilterInput = document.getElementById('alert-filter-input');
@@ -34,8 +47,17 @@ const alertFilterSecondary = document.getElementById('alert-filter-secondary');
 const clearAlertFilterBtn = document.getElementById('clear-alert-filter');
 const alertCount = document.getElementById('alert-count');
 
+// Search elements for Main and Secondary triggers
+const mainTriggerSearch = document.getElementById('main-trigger-search');
+const clearMainSearch = document.getElementById('clear-main-search');
+const mainTriggerCount = document.getElementById('main-trigger-count');
+const secondaryTriggerSearch = document.getElementById('secondary-trigger-search');
+const clearSecondarySearch = document.getElementById('clear-secondary-search');
+const secondaryTriggerCount = document.getElementById('secondary-trigger-count');
+
 // Import/Export elements
 const expandBtn = document.getElementById('expand-btn');
+const retriggerBtn = document.getElementById('retrigger-btn');
 const exportBtn = document.getElementById('export-btn');
 const importBtn = document.getElementById('import-btn');
 const importFile = document.getElementById('import-file');
@@ -49,8 +71,10 @@ const mainTriggerModal = document.getElementById('main-trigger-modal');
 const secondaryTriggerModal = document.getElementById('secondary-trigger-modal');
 const alertModal = document.getElementById('alert-modal');
 
-// Debug mode elements
+// Debug mode and alert style elements
 const debugModeCheckbox = document.getElementById('debug-mode-checkbox');
+const alertStyleSelect = document.getElementById('alert-style-select');
+const showTriggerNamesSelect = document.getElementById('show-trigger-names-select');
 
 // Initialize app
 function init() {
@@ -60,11 +84,24 @@ function init() {
 
 }
 
+function hasUnsavedChanges() {
+  const activeModal = document.querySelector('.modal-overlay.active');
+  if (!activeModal) return false;
+  return Array.from(activeModal.querySelectorAll('input[type="text"], textarea'))
+    .some(el => el.value.trim() !== '');
+}
+
 // Tab switching functionality
 function setupTabs() {
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
       const targetTab = tab.dataset.tab;
+
+      if (hasUnsavedChanges()) {
+        if (!confirm('You have unsaved changes. Switch tabs and discard them?')) return;
+        const activeModal = document.querySelector('.modal-overlay.active');
+        if (activeModal) closeModal(activeModal);
+      }
 
       // Remove active class from all tabs and contents
       tabs.forEach(t => t.classList.remove('active'));
@@ -104,7 +141,39 @@ function setupEventHandlers() {
   cancelAlertEditBtn.addEventListener('click', clearAlertForm);
   clearAlertFormBtn.addEventListener('click', clearAlertForm);
 
-  // Filter functionality
+  // Main trigger search functionality
+  mainTriggerSearch.addEventListener('input', (e) => {
+    mainTriggerSearchTerm = e.target.value;
+    chrome.storage.local.get(['mainTriggers', 'alerts'], res => {
+      applyMainTriggerFilter(res.mainTriggers || [], res.alerts || []);
+    });
+  });
+
+  clearMainSearch.addEventListener('click', () => {
+    mainTriggerSearch.value = '';
+    mainTriggerSearchTerm = '';
+    chrome.storage.local.get(['mainTriggers', 'alerts'], res => {
+      applyMainTriggerFilter(res.mainTriggers || [], res.alerts || []);
+    });
+  });
+
+  // Secondary trigger search functionality
+  secondaryTriggerSearch.addEventListener('input', (e) => {
+    secondaryTriggerSearchTerm = e.target.value;
+    chrome.storage.local.get(['secondaryTriggers', 'alerts'], res => {
+      applySecondaryTriggerFilter(res.secondaryTriggers || [], res.alerts || []);
+    });
+  });
+
+  clearSecondarySearch.addEventListener('click', () => {
+    secondaryTriggerSearch.value = '';
+    secondaryTriggerSearchTerm = '';
+    chrome.storage.local.get(['secondaryTriggers', 'alerts'], res => {
+      applySecondaryTriggerFilter(res.secondaryTriggers || [], res.alerts || []);
+    });
+  });
+
+  // Alert filter functionality
   alertFilterInput.addEventListener('input', (e) => {
     currentFilters.search = e.target.value;
     applyFiltersAndRender();
@@ -133,6 +202,23 @@ function setupEventHandlers() {
   // Modal close handlers
   setupModalCloseHandlers();
 
+  // Retrigger alerts on current page
+  retriggerBtn.addEventListener('click', () => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (!tabs[0]) return;
+      chrome.tabs.sendMessage(tabs[0].id, { type: 'retrigger' }, () => {
+        void chrome.runtime.lastError; // suppress "no receiver" errors
+      });
+      const orig = retriggerBtn.textContent;
+      retriggerBtn.textContent = '✓ Done';
+      retriggerBtn.disabled = true;
+      setTimeout(() => {
+        retriggerBtn.textContent = orig;
+        retriggerBtn.disabled = false;
+      }, 1500);
+    });
+  });
+
   // Import/Export functionality
   expandBtn.addEventListener('click', toggleExpanded);
   exportBtn.addEventListener('click', exportData);
@@ -143,6 +229,20 @@ function setupEventHandlers() {
   // Debug mode functionality
   debugModeCheckbox.addEventListener('change', saveDebugModeSetting);
   loadDebugModeSetting();
+
+  // Alert style functionality
+  alertStyleSelect.addEventListener('change', saveAlertStyleSetting);
+  loadAlertStyleSetting();
+
+  // Show trigger names functionality
+  showTriggerNamesSelect.addEventListener('change', saveShowTriggerNamesSetting);
+  loadShowTriggerNamesSetting();
+
+  // Global section names — auto-save on change
+  [globalSectionName1, globalSectionName2, globalSectionName3].forEach(el => {
+    if (el) el.addEventListener('change', saveSectionNames);
+  });
+  loadSectionNames();
 
   // Keyword row removal (delegated events)
   mainKeywordContainer.addEventListener('click', (e) => {
@@ -279,8 +379,11 @@ function evaluateTrigger(trigger, text) {
 // ===== MAIN TRIGGERS FUNCTIONS =====
 
 
-// Variable to track if we're editing
+// Variables to track if we're editing and filtering
 let editingMainTriggerId = null;
+let allMainTriggers = [];
+let filteredMainTriggers = [];
+let mainTriggerSearchTerm = '';
 
 function saveMainTrigger() {
   const name = mainTriggerNameInput.value.trim();
@@ -342,7 +445,7 @@ function editMainTrigger(triggerId) {
         const row = document.createElement('div');
         row.className = 'keyword-row';
         row.innerHTML = `
-          <input type="text" class="keyword-input" placeholder="Keyword" value="${keyword.keyword}">
+          <input type="text" class="keyword-input" placeholder="Keyword" value="${escHtml(keyword.keyword)}">
           <select class="operator-select">
             <option value="AND" ${keyword.operator === 'AND' ? 'selected' : ''}>AND</option>
             <option value="OR" ${keyword.operator === 'OR' ? 'selected' : ''}>OR</option>
@@ -377,29 +480,81 @@ function clearMainTriggerForm() {
 
 function loadMainTriggers() {
   chrome.storage.local.get(['mainTriggers', 'alerts'], res => {
-    const mainTriggers = res.mainTriggers || [];
+    allMainTriggers = res.mainTriggers || [];
     const alerts = res.alerts || [];
-    console.log('Loading', mainTriggers.length, 'main triggers');
+    console.log('Loading', allMainTriggers.length, 'main triggers');
 
     if (!mainTriggersList) {
       console.error('mainTriggersList element not found!');
       return;
     }
 
-    mainTriggersList.innerHTML = '';
+    // Apply search filter
+    applyMainTriggerFilter(allMainTriggers, alerts);
+  });
+}
 
-    if (mainTriggers.length === 0) {
-      mainTriggersList.innerHTML = `
-        <div class="empty-state">
-          <div class="empty-state-icon">⚡</div>
-          <div class="empty-state-text">No main triggers yet</div>
-          <div class="empty-state-subtext">Create your first trigger above</div>
-        </div>
-      `;
-      return;
+function applyMainTriggerFilter(mainTriggers, alerts) {
+  // Filter triggers based on search term
+  filteredMainTriggers = mainTriggers.filter(trigger => {
+    if (!mainTriggerSearchTerm) return true;
+
+    const searchLower = mainTriggerSearchTerm.toLowerCase();
+
+    // Search in trigger name
+    if (trigger.name.toLowerCase().includes(searchLower)) {
+      return true;
     }
 
-    mainTriggers.forEach(trigger => {
+    // Search in keywords
+    if (trigger.keywords && trigger.keywords.some(kw =>
+      kw.keyword.toLowerCase().includes(searchLower)
+    )) {
+      return true;
+    }
+
+    return false;
+  });
+
+  // Update count
+  if (allMainTriggers.length === 0) {
+    mainTriggerCount.textContent = '';
+  } else if (filteredMainTriggers.length === allMainTriggers.length) {
+    mainTriggerCount.textContent = `${allMainTriggers.length} trigger${allMainTriggers.length !== 1 ? 's' : ''}`;
+  } else {
+    mainTriggerCount.textContent = `${filteredMainTriggers.length} of ${allMainTriggers.length} trigger${allMainTriggers.length !== 1 ? 's' : ''}`;
+  }
+
+  // Render
+  renderMainTriggers(filteredMainTriggers, alerts);
+}
+
+function renderMainTriggers(mainTriggers, alerts) {
+  mainTriggersList.innerHTML = '';
+
+  if (allMainTriggers.length === 0) {
+    mainTriggersList.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">⚡</div>
+        <div class="empty-state-text">No main triggers yet</div>
+        <div class="empty-state-subtext">Create your first trigger above</div>
+      </div>
+    `;
+    return;
+  }
+
+  if (mainTriggers.length === 0) {
+    mainTriggersList.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">🔍</div>
+        <div class="empty-state-text">No triggers match your search</div>
+        <div class="empty-state-subtext">Try a different search term</div>
+      </div>
+    `;
+    return;
+  }
+
+  mainTriggers.forEach(trigger => {
       const div = document.createElement('div');
       div.className = 'trigger-item';
 
@@ -417,20 +572,22 @@ function loadMainTriggers() {
         : '';
 
       div.innerHTML = `
-        <div class="item-header">
-          <div class="item-title">${trigger.name}</div>
-          ${usageBadge}
-        </div>
-        <div class="item-keywords">${keywordText}</div>
-        <div class="item-actions">
-          <button class="btn btn-secondary edit-main-trigger" data-trigger-id="${trigger.id}">Edit</button>
-          <button class="btn btn-danger delete-main-trigger" data-trigger-id="${trigger.id}" ${isInUse ? 'title="Cannot delete - trigger is in use"' : ''}>Delete</button>
+        <div class="item-row">
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:5px;">
+              <span class="item-title">${escHtml(trigger.name)}</span>${usageBadge}
+            </div>
+            <div class="item-keywords">${escHtml(keywordText)}</div>
+          </div>
+          <div class="item-actions">
+            <button class="btn btn-secondary edit-main-trigger" data-trigger-id="${trigger.id}">Edit</button>
+            <button class="btn btn-danger delete-main-trigger" data-trigger-id="${trigger.id}" ${isInUse ? 'title="In use"' : ''}>Del</button>
+          </div>
         </div>
       `;
 
       mainTriggersList.appendChild(div);
     });
-  });
 }
 
 function deleteMainTrigger(triggerId) {
@@ -467,8 +624,11 @@ function deleteMainTrigger(triggerId) {
 // ===== SECONDARY TRIGGERS FUNCTIONS =====
 
 
-// Variable to track if we're editing
+// Variables to track if we're editing and filtering
 let editingSecondaryTriggerId = null;
+let allSecondaryTriggers = [];
+let filteredSecondaryTriggers = [];
+let secondaryTriggerSearchTerm = '';
 
 function saveSecondaryTrigger() {
   const name = secondaryTriggerNameInput.value.trim();
@@ -530,7 +690,7 @@ function editSecondaryTrigger(triggerId) {
         const row = document.createElement('div');
         row.className = 'keyword-row';
         row.innerHTML = `
-          <input type="text" class="keyword-input" placeholder="Keyword" value="${keyword.keyword}">
+          <input type="text" class="keyword-input" placeholder="Keyword" value="${escHtml(keyword.keyword)}">
           <select class="operator-select">
             <option value="AND" ${keyword.operator === 'AND' ? 'selected' : ''}>AND</option>
             <option value="OR" ${keyword.operator === 'OR' ? 'selected' : ''}>OR</option>
@@ -565,22 +725,75 @@ function clearSecondaryTriggerForm() {
 
 function loadSecondaryTriggers() {
   chrome.storage.local.get(['secondaryTriggers', 'alerts'], res => {
-    const secondaryTriggers = res.secondaryTriggers || [];
+    allSecondaryTriggers = res.secondaryTriggers || [];
     const alerts = res.alerts || [];
-    secondaryTriggersList.innerHTML = '';
 
-    if (secondaryTriggers.length === 0) {
-      secondaryTriggersList.innerHTML = `
-        <div class="empty-state">
-          <div class="empty-state-icon">🎯</div>
-          <div class="empty-state-text">No secondary triggers yet</div>
-          <div class="empty-state-subtext">Create your first trigger above</div>
-        </div>
-      `;
-      return;
+    // Apply search filter
+    applySecondaryTriggerFilter(allSecondaryTriggers, alerts);
+  });
+}
+
+function applySecondaryTriggerFilter(secondaryTriggers, alerts) {
+  // Filter triggers based on search term
+  filteredSecondaryTriggers = secondaryTriggers.filter(trigger => {
+    if (!secondaryTriggerSearchTerm) return true;
+
+    const searchLower = secondaryTriggerSearchTerm.toLowerCase();
+
+    // Search in trigger name
+    if (trigger.name.toLowerCase().includes(searchLower)) {
+      return true;
     }
 
-    secondaryTriggers.forEach(trigger => {
+    // Search in keywords
+    if (trigger.keywords && trigger.keywords.some(kw =>
+      kw.keyword.toLowerCase().includes(searchLower)
+    )) {
+      return true;
+    }
+
+    return false;
+  });
+
+  // Update count
+  if (allSecondaryTriggers.length === 0) {
+    secondaryTriggerCount.textContent = '';
+  } else if (filteredSecondaryTriggers.length === allSecondaryTriggers.length) {
+    secondaryTriggerCount.textContent = `${allSecondaryTriggers.length} trigger${allSecondaryTriggers.length !== 1 ? 's' : ''}`;
+  } else {
+    secondaryTriggerCount.textContent = `${filteredSecondaryTriggers.length} of ${allSecondaryTriggers.length} trigger${allSecondaryTriggers.length !== 1 ? 's' : ''}`;
+  }
+
+  // Render
+  renderSecondaryTriggers(filteredSecondaryTriggers, alerts);
+}
+
+function renderSecondaryTriggers(secondaryTriggers, alerts) {
+  secondaryTriggersList.innerHTML = '';
+
+  if (allSecondaryTriggers.length === 0) {
+    secondaryTriggersList.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">🎯</div>
+        <div class="empty-state-text">No secondary triggers yet</div>
+        <div class="empty-state-subtext">Create your first trigger above</div>
+      </div>
+    `;
+    return;
+  }
+
+  if (secondaryTriggers.length === 0) {
+    secondaryTriggersList.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">🔍</div>
+        <div class="empty-state-text">No triggers match your search</div>
+        <div class="empty-state-subtext">Try a different search term</div>
+      </div>
+    `;
+    return;
+  }
+
+  secondaryTriggers.forEach(trigger => {
       const div = document.createElement('div');
       div.className = 'trigger-item';
 
@@ -598,19 +811,21 @@ function loadSecondaryTriggers() {
         : '';
 
       div.innerHTML = `
-        <div class="item-header">
-          <div class="item-title">${trigger.name}</div>
-          ${usageBadge}
-        </div>
-        <div class="item-keywords">${keywordText}</div>
-        <div class="item-actions">
-          <button class="btn btn-secondary edit-secondary-trigger" data-trigger-id="${trigger.id}">Edit</button>
-          <button class="btn btn-danger delete-secondary-trigger" data-trigger-id="${trigger.id}" ${isInUse ? 'title="Cannot delete - trigger is in use"' : ''}>Delete</button>
+        <div class="item-row">
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:5px;">
+              <span class="item-title">${escHtml(trigger.name)}</span>${usageBadge}
+            </div>
+            <div class="item-keywords">${escHtml(keywordText)}</div>
+          </div>
+          <div class="item-actions">
+            <button class="btn btn-secondary edit-secondary-trigger" data-trigger-id="${trigger.id}">Edit</button>
+            <button class="btn btn-danger delete-secondary-trigger" data-trigger-id="${trigger.id}" ${isInUse ? 'title="In use"' : ''}>Del</button>
+          </div>
         </div>
       `;
       secondaryTriggersList.appendChild(div);
     });
-  });
 }
 
 function deleteSecondaryTrigger(triggerId) {
@@ -664,7 +879,7 @@ function loadTriggersForAlerts(callback) {
         div.className = 'checkbox-item';
         div.innerHTML = `
           <input type="checkbox" value="${trigger.id}" id="main-${trigger.id}">
-          <label for="main-${trigger.id}">${trigger.name}</label>
+          <label for="main-${trigger.id}">${escHtml(trigger.name)}</label>
         `;
         alertMainTriggersDiv.appendChild(div);
       });
@@ -683,7 +898,7 @@ function loadTriggersForAlerts(callback) {
         div.className = 'checkbox-item';
         div.innerHTML = `
           <input type="checkbox" value="${trigger.id}" id="secondary-${trigger.id}">
-          <label for="secondary-${trigger.id}">${trigger.name}</label>
+          <label for="secondary-${trigger.id}">${escHtml(trigger.name)}</label>
         `;
         alertSecondaryTriggersDiv.appendChild(div);
       });
@@ -708,57 +923,117 @@ let currentFilters = {
   secondaryTrigger: ''
 };
 
+// ===== SECTION NAMES (global settings) =====
+
+function loadSectionNames(callback) {
+  chrome.storage.local.get(['sectionNames'], (result) => {
+    const names = result.sectionNames || ['', '', ''];
+    if (globalSectionName1) globalSectionName1.value = names[0] || '';
+    if (globalSectionName2) globalSectionName2.value = names[1] || '';
+    if (globalSectionName3) globalSectionName3.value = names[2] || '';
+    updateAlertFormLabels(names);
+    if (callback) callback(names);
+  });
+}
+
+function saveSectionNames() {
+  const names = [
+    globalSectionName1.value.trim(),
+    globalSectionName2.value.trim(),
+    globalSectionName3.value.trim()
+  ];
+  chrome.storage.local.set({ sectionNames: names }, () => {
+    updateAlertFormLabels(names);
+  });
+}
+
+function updateAlertFormLabels(names) {
+  const n = [names[0] || 'Section 1', names[1] || 'Section 2', names[2] || 'Section 3'];
+  const lbl1 = document.getElementById('section-label-1');
+  const lbl2 = document.getElementById('section-label-2');
+  const lbl3 = document.getElementById('section-label-3');
+  if (lbl1) lbl1.innerHTML = `${escHtml(n[0])} <span style="color: var(--destructive);">*</span>`;
+  if (lbl2) lbl2.innerHTML = `${escHtml(n[1])} <span style="color: var(--text-secondary); font-weight: 400;">(optional)</span>`;
+  if (lbl3) lbl3.innerHTML = `${escHtml(n[2])} <span style="color: var(--text-secondary); font-weight: 400;">(optional)</span>`;
+  const c1 = document.getElementById('section-content-1');
+  const c2 = document.getElementById('section-content-2');
+  const c3 = document.getElementById('section-content-3');
+  if (c1) c1.placeholder = `Required — ${n[0]}...`;
+  if (c2) c2.placeholder = `${n[1]}... (optional)`;
+  if (c3) c3.placeholder = `${n[2]}... (optional)`;
+}
+
+// Normalize any historical alert format → [s1, s2, s3] strings
+function resolveSectionContents(alertItem) {
+  const s = alertItem.sections;
+  if (Array.isArray(s) && s.length > 0) {
+    if (typeof s[0] === 'string') {
+      return [s[0] || '', s[1] || '', s[2] || ''];
+    }
+    if (s[0] !== null && typeof s[0] === 'object') {
+      return [s[0]?.content || alertItem.message || '', s[1]?.content || '', s[2]?.content || ''];
+    }
+  }
+  return [alertItem.message || '', '', ''];
+}
+
 function saveAlert() {
   const selectedMainTriggers = Array.from(alertMainTriggersDiv.querySelectorAll('input[type="checkbox"]:checked')).map(cb => parseInt(cb.value));
   const selectedSecondaryTriggers = Array.from(alertSecondaryTriggersDiv.querySelectorAll('input[type="checkbox"]:checked')).map(cb => parseInt(cb.value));
-  const alertMessage = alertMessageTextArea.value.trim();
+
+  const s1 = (document.getElementById('section-content-1')?.value || '').trim();
+  const s2 = (document.getElementById('section-content-2')?.value || '').trim();
+  const s3 = (document.getElementById('section-content-3')?.value || '').trim();
 
   if (selectedMainTriggers.length === 0) {
     alert('Please select at least one main trigger.');
     return;
   }
 
-  if (!alertMessage) {
-    alert('Please enter an alert message.');
+  if (!s1) {
+    alert('Please enter the Section 1 content (alert message).');
     return;
   }
 
+  const sections = [s1, s2, s3];
+
   chrome.storage.local.get(['alerts'], res => {
     let alerts = res.alerts || [];
+    const wasEditing = !!editingAlertId;
 
     if (editingAlertId) {
-      // Update existing alert
       const index = alerts.findIndex(a => a.id === editingAlertId);
       if (index !== -1) {
         alerts[index] = {
           id: editingAlertId,
           mainTriggers: selectedMainTriggers,
           secondaryTriggers: selectedSecondaryTriggers,
-          message: alertMessage
+          message: s1,
+          sections
         };
       }
       editingAlertId = null;
       saveAlertBtn.textContent = 'Save Alert';
+      cancelAlertEditBtn.style.display = 'none';
     } else {
-      // Create new alert
-      const newAlert = {
+      alerts.push({
         id: Date.now(),
         mainTriggers: selectedMainTriggers,
         secondaryTriggers: selectedSecondaryTriggers,
-        message: alertMessage
-      };
-      alerts.push(newAlert);
+        message: s1,
+        sections
+      });
     }
 
     chrome.storage.local.set({ alerts }, () => {
-      const isEditing = editingAlertId !== null;
-      alert(isEditing ? 'Alert updated!' : 'Alert saved! You can create another one with the same triggers or change selections.');
+      alert(wasEditing ? 'Alert updated!' : 'Alert saved! You can create another one with the same triggers or change selections.');
 
-      // Only clear the message text, keep checkboxes for easier multiple alert creation
-      alertMessageTextArea.value = '';
+      // Clear section contents but keep trigger checkboxes for easier multiple creation
+      if (document.getElementById('section-content-1')) document.getElementById('section-content-1').value = '';
+      if (document.getElementById('section-content-2')) document.getElementById('section-content-2').value = '';
+      if (document.getElementById('section-content-3')) document.getElementById('section-content-3').value = '';
 
-      if (isEditing) {
-        // If we were editing, clear everything and reset to create mode
+      if (wasEditing) {
         clearAlertForm();
       }
 
@@ -779,8 +1054,12 @@ function editAlert(alertId) {
       saveAlertBtn.textContent = 'Update Alert';
       cancelAlertEditBtn.style.display = 'inline-block';
 
-      // Load alert data into form
-      alertMessageTextArea.value = alertToEdit.message;
+      // Load section contents (handles all 3 historical formats)
+      const contents = resolveSectionContents(alertToEdit);
+      [1, 2, 3].forEach(i => {
+        const el = document.getElementById(`section-content-${i}`);
+        if (el) el.value = contents[i - 1] || '';
+      });
 
       // Open alert modal for editing
       openModal(alertModal);
@@ -809,10 +1088,12 @@ function clearAlertForm() {
   editingAlertId = null;
   saveAlertBtn.textContent = 'Save Alert';
   cancelAlertEditBtn.style.display = 'none';
-  // Clear checkboxes
   alertMainTriggersDiv.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
   alertSecondaryTriggersDiv.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
-  alertMessageTextArea.value = '';
+  [1, 2, 3].forEach(i => {
+    const el = document.getElementById(`section-content-${i}`);
+    if (el) el.value = '';
+  });
 }
 
 function loadAlerts() {
@@ -986,24 +1267,30 @@ function renderFilteredAlerts(mainTriggers, secondaryTriggers) {
 
     const selectedMainTriggerNames = alert.mainTriggers.map(id => {
       const trigger = mainTriggers.find(t => t.id === id);
-      return trigger ? trigger.name : 'Deleted Trigger';
+      return trigger ? escHtml(trigger.name) : 'Deleted Trigger';
     });
 
     const selectedSecondaryTriggerNames = alert.secondaryTriggers.map(id => {
       const trigger = secondaryTriggers.find(t => t.id === id);
-      return trigger ? trigger.name : 'Deleted Trigger';
+      return trigger ? escHtml(trigger.name) : 'Deleted Trigger';
     });
 
+    const contents = resolveSectionContents(alert);
+    const filledSections = contents.filter(c => c).length;
+    const sectionsNote = filledSections > 1
+      ? `<div style="font-size: 11px; color: var(--text-secondary); margin: 4px 0 8px 0;">📋 ${filledSections} section(s)</div>`
+      : '';
+
     div.innerHTML = `
-      <div class="item-title">Alert: ${alert.message}</div>
-      <div style="margin-bottom: 8px;">
-        <strong>Main:</strong> ${selectedMainTriggerNames.join(', ')}
+      <div class="item-row">
+        <div class="item-title" style="flex:1">${escHtml(contents[0] || alert.message)}</div>
+        <div class="item-actions">
+          <button class="btn btn-secondary edit-alert" data-alert-id="${alert.id}">Edit</button>
+          <button class="btn btn-danger delete-alert" data-alert-id="${alert.id}">Del</button>
+        </div>
       </div>
-      ${selectedSecondaryTriggerNames.length > 0 ? `<div style="margin-bottom: 12px;"><strong>Secondary:</strong> ${selectedSecondaryTriggerNames.join(', ')}</div>` : ''}
-      <div class="alert-message">${alert.message}</div>
-      <div class="item-actions">
-        <button class="btn btn-secondary edit-alert" data-alert-id="${alert.id}">Edit</button>
-        <button class="btn btn-danger delete-alert" data-alert-id="${alert.id}">Delete</button>
+      <div class="item-meta">
+        <strong>Main:</strong> ${selectedMainTriggerNames.join(', ')}${selectedSecondaryTriggerNames.length > 0 ? ` · <strong>Sec:</strong> ${selectedSecondaryTriggerNames.join(', ')}` : ''}${filledSections > 1 ? ` · 📋 ${filledSections} sections` : ''}
       </div>
     `;
     alertsList.appendChild(div);
@@ -1038,16 +1325,16 @@ function deleteAlert(alertId) {
 // ===== IMPORT/EXPORT FUNCTIONS =====
 
 function exportData() {
-  chrome.storage.local.get(['mainTriggers', 'secondaryTriggers', 'alerts'], res => {
+  chrome.storage.local.get(['mainTriggers', 'secondaryTriggers', 'alerts', 'sectionNames', 'alertStyle', 'showTriggerNames', 'debugMode'], res => {
     const mainTriggers = res.mainTriggers || [];
     const secondaryTriggers = res.secondaryTriggers || [];
     const alerts = res.alerts || [];
 
     const exportData = {
-      version: "1.0.0",
+      version: "1.1.0",
       exportDate: new Date().toISOString(),
       exportSource: "Keyword Alert Extension",
-      mergeable: true, // Indicates this export supports merging
+      mergeable: true,
       credits: {
         icon: "Siren icon from Flaticon",
         iconUrl: "https://www.flaticon.com/free-icon/siren_18468278"
@@ -1057,6 +1344,12 @@ function exportData() {
         secondaryTriggers: secondaryTriggers.length,
         alerts: alerts.length,
         totalItems: mainTriggers.length + secondaryTriggers.length + alerts.length
+      },
+      settings: {
+        sectionNames:      res.sectionNames      || [],
+        alertStyle:        res.alertStyle        || 'custom',
+        showTriggerNames:  res.showTriggerNames  || 'none',
+        debugMode:         res.debugMode         || false
       },
       data: {
         mainTriggers: mainTriggers,
@@ -1130,8 +1423,11 @@ function showImportOptionsDialog(importData) {
     const currentSecondaryCount = (res.secondaryTriggers || []).length;
     const currentAlertCount = (res.alerts || []).length;
 
+    const hasSettings = !!importData.settings;
+    const settingsNote = hasSettings ? `\nSettings also included (section names, alert style, etc.).` : '';
+
     // Show simple confirmation dialog first
-    const basicMessage = `Found import file with ${mainCount} main triggers, ${secondaryCount} secondary triggers, and ${alertCount} alerts.
+    const basicMessage = `Found import file with ${mainCount} main triggers, ${secondaryCount} secondary triggers, and ${alertCount} alerts.${settingsNote}
 
 You currently have ${currentMainCount} main triggers, ${currentSecondaryCount} secondary triggers, and ${currentAlertCount} alerts.
 
@@ -1158,23 +1454,51 @@ Click OK to MERGE, Cancel to see REPLACE option.`;
   });
 }
 
+function applyImportedSettings(settings) {
+  if (!settings) return;
+  const toSet = {};
+  if (settings.sectionNames     !== undefined) toSet.sectionNames     = settings.sectionNames;
+  if (settings.alertStyle       !== undefined) toSet.alertStyle       = settings.alertStyle;
+  if (settings.showTriggerNames !== undefined) toSet.showTriggerNames = settings.showTriggerNames;
+  if (settings.debugMode        !== undefined) toSet.debugMode        = settings.debugMode;
+  if (Object.keys(toSet).length === 0) return;
+  chrome.storage.local.set(toSet, () => {
+    loadSectionNames();
+    loadAlertStyleSetting();
+    loadShowTriggerNamesSetting();
+    loadDebugModeSetting();
+  });
+}
+
+function settingsSummary(settings) {
+  if (!settings) return '';
+  const parts = [];
+  if (settings.sectionNames?.some(n => n)) parts.push(`section names: "${settings.sectionNames.filter(n=>n).join('", "')}"`);
+  if (settings.alertStyle)       parts.push(`alert style: ${settings.alertStyle}`);
+  if (settings.showTriggerNames) parts.push(`show trigger names: ${settings.showTriggerNames}`);
+  if (settings.debugMode)        parts.push(`debug mode: on`);
+  return parts.length ? '\nSettings: ' + parts.join(', ') : '';
+}
+
 function performReplaceImport(importData) {
   const mainCount = importData.data.mainTriggers.length;
   const secondaryCount = importData.data.secondaryTriggers.length;
   const alertCount = importData.data.alerts.length;
+  const hasSettings = !!importData.settings;
 
-  if (!confirm(`REPLACE: This will delete ALL current data and replace with ${mainCount} main trigger(s), ${secondaryCount} secondary trigger(s), and ${alertCount} alert(s). Continue?`)) {
+  const settingsLine = hasSettings ? `\n${settingsSummary(importData.settings)}` : '';
+  if (!confirm(`REPLACE: This will delete ALL current data and replace with ${mainCount} main trigger(s), ${secondaryCount} secondary trigger(s), and ${alertCount} alert(s).${settingsLine}\n\nContinue?`)) {
     return;
   }
 
-  // Replace all data (original behavior)
   chrome.storage.local.set({
     mainTriggers: importData.data.mainTriggers,
     secondaryTriggers: importData.data.secondaryTriggers,
     alerts: importData.data.alerts
   }, () => {
+    if (hasSettings) applyImportedSettings(importData.settings);
     loadAllData();
-    showImportSuccess('Data replaced successfully!');
+    showImportSuccess('Data replaced successfully!' + (hasSettings ? ' Settings applied.' : ''));
   });
 }
 
@@ -1202,7 +1526,10 @@ Continue with merge?`;
       return;
     }
 
-    console.log('User confirmed merge, applying data...');
+    const hasSettings = !!importData.settings;
+    const applySettings = hasSettings && confirm(
+      `The file also contains settings:${settingsSummary(importData.settings)}\n\nApply these settings too?`
+    );
 
     // Apply merged data
     chrome.storage.local.set({
@@ -1216,9 +1543,9 @@ Continue with merge?`;
         return;
       }
 
-      console.log('Data successfully saved to storage');
+      if (applySettings) applyImportedSettings(importData.settings);
       loadAllData();
-      showImportSuccess(`Data merged successfully! Added ${mergedData.stats.mainAdded + mergedData.stats.secondaryAdded + mergedData.stats.alertsAdded} new items.`);
+      showImportSuccess(`Data merged successfully! Added ${mergedData.stats.mainAdded + mergedData.stats.secondaryAdded + mergedData.stats.alertsAdded} new items.` + (applySettings ? ' Settings applied.' : ''));
     });
   } catch (error) {
     console.error('Error during merge:', error);
@@ -1483,12 +1810,14 @@ function setupModalCloseHandlers() {
     });
   });
 
-  // Close on Escape key
+  // Escape: close modal if open, otherwise close popup
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       const activeModal = document.querySelector('.modal-overlay.active');
       if (activeModal) {
         closeModal(activeModal);
+      } else {
+        window.close();
       }
     }
   });
@@ -1536,9 +1865,9 @@ function toggleExpanded() {
   } else {
     // Reset to original compact size
     document.body.style.width = '400px';
-    document.body.style.height = 'auto';
+    document.body.style.height = '560px';
     document.body.style.maxHeight = 'none';
-    document.body.style.minHeight = '500px';
+    document.body.style.minHeight = 'auto';
 
     // Remove expanded class to reset scrollable containers
     document.body.classList.remove('expanded');
@@ -1565,7 +1894,33 @@ function loadDebugModeSetting() {
   });
 }
 
-// Functions are now handled via event delegation, no need for global assignment
+function saveAlertStyleSetting() {
+  const alertStyle = alertStyleSelect.value;
+  chrome.storage.local.set({ alertStyle }, () => {
+    console.log('Alert style setting saved:', alertStyle);
+  });
+}
+
+function loadAlertStyleSetting() {
+  chrome.storage.local.get(['alertStyle'], (result) => {
+    const alertStyle = result.alertStyle || 'custom';
+    alertStyleSelect.value = alertStyle;
+    // Persist the default so content.js always finds it in storage
+    if (!result.alertStyle) {
+      chrome.storage.local.set({ alertStyle: 'custom' });
+    }
+  });
+}
+
+function saveShowTriggerNamesSetting() {
+  chrome.storage.local.set({ showTriggerNames: showTriggerNamesSelect.value });
+}
+
+function loadShowTriggerNamesSetting() {
+  chrome.storage.local.get(['showTriggerNames'], (result) => {
+    showTriggerNamesSelect.value = result.showTriggerNames || 'none';
+  });
+}
 
 // Initialize when DOM is ready
 init();
