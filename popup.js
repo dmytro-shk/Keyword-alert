@@ -1729,7 +1729,7 @@ function saveAlertStyleSetting() {
 
 function loadAlertStyleSetting() {
   chrome.storage.local.get(['alertStyle'], (result) => {
-    const alertStyle = result.alertStyle || 'native';
+    const alertStyle = result.alertStyle || 'custom';
     alertStyleSelect.value = alertStyle;
     console.log('Alert style setting loaded:', alertStyle);
   });

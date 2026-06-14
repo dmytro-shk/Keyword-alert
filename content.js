@@ -477,11 +477,40 @@ let lastCheckTime = 0; // Track last check time for debouncing
 const CHECK_DEBOUNCE_MS = 1000; // Minimum time between checks
 const suppressedAlerts = new Map(); // Track suppressed alerts: alertId -> expiryTime
 
+// Restore suppress state from storage so it survives page reloads
+function loadSuppressState() {
+  chrome.storage.local.get(['suppressedAlerts'], (result) => {
+    const now = Date.now();
+    const stored = result.suppressedAlerts || {};
+    let hasStale = false;
+    Object.entries(stored).forEach(([idStr, expiryTime]) => {
+      if (expiryTime > now) {
+        suppressedAlerts.set(parseInt(idStr), expiryTime);
+      } else {
+        hasStale = true;
+      }
+    });
+    if (hasStale) {
+      saveSuppressState(); // Clean up expired entries from storage
+    }
+  });
+}
+
+function saveSuppressState() {
+  const state = {};
+  suppressedAlerts.forEach((expiryTime, alertId) => {
+    state[alertId] = expiryTime;
+  });
+  chrome.storage.local.set({ suppressedAlerts: state });
+}
+
+loadSuppressState();
+
 // Function to show custom alert dialog
 function showCustomAlert(message, alertId, debugInfo, index) {
   return new Promise((resolve) => {
     chrome.storage.local.get(['alertStyle'], (result) => {
-      const alertStyle = result.alertStyle || 'native';
+      const alertStyle = result.alertStyle || 'custom';
 
       if (alertStyle === 'native') {
         // Use native window.alert
@@ -617,6 +646,7 @@ function createSuppressButton(label, minutes, alertId, overlay, resolve) {
   btn.onclick = () => {
     const expiryTime = Date.now() + (minutes * 60 * 1000);
     suppressedAlerts.set(alertId, expiryTime);
+    saveSuppressState(); // Persist so suppress survives page reloads
     shownAlerts.delete(alertId); // Allow it to show again after suppression expires
     console.log(`Alert ${alertId} suppressed for ${minutes} minute(s)`);
     document.body.removeChild(overlay);
@@ -749,6 +779,7 @@ function checkPage() {
         } else if (suppressExpiry) {
           // Suppression expired, remove it
           suppressedAlerts.delete(alertItem.id);
+          saveSuppressState();
         }
 
         // Check all combinations of main + secondary trigger sets
