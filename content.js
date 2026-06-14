@@ -738,12 +738,22 @@ function createAlertModal(message, alertId, debugInfo, resolve, sections, sectio
   `;
   closeBtn.onmouseover = () => closeBtn.style.background = '#0056b3';
   closeBtn.onmouseout = () => closeBtn.style.background = '#007bff';
-  closeBtn.onclick = () => {
+  const dismissModal = () => {
+    document.removeEventListener('keydown', onKeyDown);
     document.body.removeChild(overlay);
     resolve(null);
   };
 
-  const suppress1 = createSuppressButton('1 min', 1, alertId, overlay, resolve);
+  const onKeyDown = (e) => {
+    if (e.key === 'Escape') dismissModal();
+  };
+  document.addEventListener('keydown', onKeyDown);
+
+  closeBtn.onclick = dismissModal;
+
+  const suppress1 = createSuppressButton('1 min', 1, alertId, overlay, resolve, () => {
+    document.removeEventListener('keydown', onKeyDown);
+  });
 
   buttonContainer.appendChild(closeBtn);
   buttonContainer.appendChild(suppress1);
@@ -756,7 +766,7 @@ function createAlertModal(message, alertId, debugInfo, resolve, sections, sectio
   return overlay;
 }
 
-function createSuppressButton(label, minutes, alertId, overlay, resolve) {
+function createSuppressButton(label, minutes, alertId, overlay, resolve, onCleanup) {
   const btn = document.createElement('button');
   btn.textContent = `Suppress ${label}`;
   btn.style.cssText = `
@@ -775,9 +785,10 @@ function createSuppressButton(label, minutes, alertId, overlay, resolve) {
   btn.onclick = () => {
     const expiryTime = Date.now() + (minutes * 60 * 1000);
     suppressedAlerts.set(alertId, expiryTime);
-    saveSuppressState(); // Persist so suppress survives page reloads
-    shownAlerts.delete(alertId); // Allow it to show again after suppression expires
+    saveSuppressState();
+    shownAlerts.delete(alertId);
     console.log(`Alert ${alertId} suppressed for ${minutes} minute(s)`);
+    if (onCleanup) onCleanup();
     document.body.removeChild(overlay);
     resolve({ suppressed: true, minutes });
   };
