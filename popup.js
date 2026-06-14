@@ -21,11 +21,15 @@ const secondaryTriggersList = document.getElementById('secondary-triggers-list')
 // Alerts tab elements
 const alertMainTriggersDiv = document.getElementById('alert-main-triggers');
 const alertSecondaryTriggersDiv = document.getElementById('alert-secondary-triggers');
-const alertMessageTextArea = document.getElementById('alert-message');
 const saveAlertBtn = document.getElementById('save-alert');
 const cancelAlertEditBtn = document.getElementById('cancel-alert-edit');
 const clearAlertFormBtn = document.getElementById('clear-alert-form');
 const alertsList = document.getElementById('alerts-list');
+
+// Global section name inputs (Settings tab)
+const globalSectionName1 = document.getElementById('global-section-name-1');
+const globalSectionName2 = document.getElementById('global-section-name-2');
+const globalSectionName3 = document.getElementById('global-section-name-3');
 
 // Filter elements
 const alertFilterInput = document.getElementById('alert-filter-input');
@@ -188,6 +192,12 @@ function setupEventHandlers() {
   // Alert style functionality
   alertStyleSelect.addEventListener('change', saveAlertStyleSetting);
   loadAlertStyleSetting();
+
+  // Global section names — auto-save on change
+  [globalSectionName1, globalSectionName2, globalSectionName3].forEach(el => {
+    if (el) el.addEventListener('change', saveSectionNames);
+  });
+  loadSectionNames();
 
   // Keyword row removal (delegated events)
   mainKeywordContainer.addEventListener('click', (e) => {
@@ -862,42 +872,93 @@ let currentFilters = {
   secondaryTrigger: ''
 };
 
-function collectSections() {
-  return [1, 2, 3].map(i => ({
-    name: (document.getElementById(`section-name-${i}`)?.value || '').trim(),
-    content: (document.getElementById(`section-content-${i}`)?.value || '').trim()
-  })).filter(s => s.name || s.content);
+// ===== SECTION NAMES (global settings) =====
+
+function loadSectionNames(callback) {
+  chrome.storage.local.get(['sectionNames'], (result) => {
+    const names = result.sectionNames || ['', '', ''];
+    if (globalSectionName1) globalSectionName1.value = names[0] || '';
+    if (globalSectionName2) globalSectionName2.value = names[1] || '';
+    if (globalSectionName3) globalSectionName3.value = names[2] || '';
+    updateAlertFormLabels(names);
+    if (callback) callback(names);
+  });
+}
+
+function saveSectionNames() {
+  const names = [
+    globalSectionName1.value.trim(),
+    globalSectionName2.value.trim(),
+    globalSectionName3.value.trim()
+  ];
+  chrome.storage.local.set({ sectionNames: names }, () => {
+    updateAlertFormLabels(names);
+  });
+}
+
+function updateAlertFormLabels(names) {
+  const esc = s => s.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const n = [names[0] || 'Section 1', names[1] || 'Section 2', names[2] || 'Section 3'];
+  const lbl1 = document.getElementById('section-label-1');
+  const lbl2 = document.getElementById('section-label-2');
+  const lbl3 = document.getElementById('section-label-3');
+  if (lbl1) lbl1.innerHTML = `${esc(n[0])} <span style="color: var(--destructive);">*</span>`;
+  if (lbl2) lbl2.innerHTML = `${esc(n[1])} <span style="color: var(--text-secondary); font-weight: 400;">(optional)</span>`;
+  if (lbl3) lbl3.innerHTML = `${esc(n[2])} <span style="color: var(--text-secondary); font-weight: 400;">(optional)</span>`;
+  const c1 = document.getElementById('section-content-1');
+  const c2 = document.getElementById('section-content-2');
+  const c3 = document.getElementById('section-content-3');
+  if (c1) c1.placeholder = `Required — ${n[0]}...`;
+  if (c2) c2.placeholder = `${n[1]}... (optional)`;
+  if (c3) c3.placeholder = `${n[2]}... (optional)`;
+}
+
+// Normalize any historical alert format → [s1, s2, s3] strings
+function resolveSectionContents(alertItem) {
+  const s = alertItem.sections;
+  if (Array.isArray(s) && s.length > 0) {
+    if (typeof s[0] === 'string') {
+      return [s[0] || '', s[1] || '', s[2] || ''];
+    }
+    if (s[0] !== null && typeof s[0] === 'object') {
+      return [s[0]?.content || alertItem.message || '', s[1]?.content || '', s[2]?.content || ''];
+    }
+  }
+  return [alertItem.message || '', '', ''];
 }
 
 function saveAlert() {
   const selectedMainTriggers = Array.from(alertMainTriggersDiv.querySelectorAll('input[type="checkbox"]:checked')).map(cb => parseInt(cb.value));
   const selectedSecondaryTriggers = Array.from(alertSecondaryTriggersDiv.querySelectorAll('input[type="checkbox"]:checked')).map(cb => parseInt(cb.value));
-  const alertMessage = alertMessageTextArea.value.trim();
+
+  const s1 = (document.getElementById('section-content-1')?.value || '').trim();
+  const s2 = (document.getElementById('section-content-2')?.value || '').trim();
+  const s3 = (document.getElementById('section-content-3')?.value || '').trim();
 
   if (selectedMainTriggers.length === 0) {
     alert('Please select at least one main trigger.');
     return;
   }
 
-  if (!alertMessage) {
-    alert('Please enter an alert message.');
+  if (!s1) {
+    alert('Please enter the Section 1 content (alert message).');
     return;
   }
+
+  const sections = [s1, s2, s3];
 
   chrome.storage.local.get(['alerts'], res => {
     let alerts = res.alerts || [];
     const wasEditing = !!editingAlertId;
-    const sections = collectSections();
 
     if (editingAlertId) {
-      // Update existing alert
       const index = alerts.findIndex(a => a.id === editingAlertId);
       if (index !== -1) {
         alerts[index] = {
           id: editingAlertId,
           mainTriggers: selectedMainTriggers,
           secondaryTriggers: selectedSecondaryTriggers,
-          message: alertMessage,
+          message: s1,
           sections
         };
       }
@@ -905,25 +966,24 @@ function saveAlert() {
       saveAlertBtn.textContent = 'Save Alert';
       cancelAlertEditBtn.style.display = 'none';
     } else {
-      // Create new alert
-      const newAlert = {
+      alerts.push({
         id: Date.now(),
         mainTriggers: selectedMainTriggers,
         secondaryTriggers: selectedSecondaryTriggers,
-        message: alertMessage,
+        message: s1,
         sections
-      };
-      alerts.push(newAlert);
+      });
     }
 
     chrome.storage.local.set({ alerts }, () => {
       alert(wasEditing ? 'Alert updated!' : 'Alert saved! You can create another one with the same triggers or change selections.');
 
-      // Only clear the message text, keep checkboxes for easier multiple alert creation
-      alertMessageTextArea.value = '';
+      // Clear section contents but keep trigger checkboxes for easier multiple creation
+      if (document.getElementById('section-content-1')) document.getElementById('section-content-1').value = '';
+      if (document.getElementById('section-content-2')) document.getElementById('section-content-2').value = '';
+      if (document.getElementById('section-content-3')) document.getElementById('section-content-3').value = '';
 
       if (wasEditing) {
-        // If we were editing, clear everything and reset to create mode
         clearAlertForm();
       }
 
@@ -944,15 +1004,11 @@ function editAlert(alertId) {
       saveAlertBtn.textContent = 'Update Alert';
       cancelAlertEditBtn.style.display = 'inline-block';
 
-      // Load alert data into form
-      alertMessageTextArea.value = alertToEdit.message;
-
-      // Load sections (backward-compatible: old alerts have no sections)
-      const savedSections = alertToEdit.sections || [];
+      // Load section contents (handles all 3 historical formats)
+      const contents = resolveSectionContents(alertToEdit);
       [1, 2, 3].forEach(i => {
-        const s = savedSections[i - 1] || {};
-        document.getElementById(`section-name-${i}`).value = s.name || '';
-        document.getElementById(`section-content-${i}`).value = s.content || '';
+        const el = document.getElementById(`section-content-${i}`);
+        if (el) el.value = contents[i - 1] || '';
       });
 
       // Open alert modal for editing
@@ -982,13 +1038,11 @@ function clearAlertForm() {
   editingAlertId = null;
   saveAlertBtn.textContent = 'Save Alert';
   cancelAlertEditBtn.style.display = 'none';
-  // Clear checkboxes
   alertMainTriggersDiv.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
   alertSecondaryTriggersDiv.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
-  alertMessageTextArea.value = '';
   [1, 2, 3].forEach(i => {
-    document.getElementById(`section-name-${i}`).value = '';
-    document.getElementById(`section-content-${i}`).value = '';
+    const el = document.getElementById(`section-content-${i}`);
+    if (el) el.value = '';
   });
 }
 
@@ -1171,16 +1225,19 @@ function renderFilteredAlerts(mainTriggers, secondaryTriggers) {
       return trigger ? trigger.name : 'Deleted Trigger';
     });
 
+    const contents = resolveSectionContents(alert);
+    const filledSections = contents.filter(c => c).length;
+    const sectionsNote = filledSections > 1
+      ? `<div style="font-size: 11px; color: var(--text-secondary); margin: 4px 0 8px 0;">📋 ${filledSections} section(s)</div>`
+      : '';
+
     div.innerHTML = `
-      <div class="item-title">Alert: ${alert.message}</div>
+      <div class="item-title">${contents[0] || alert.message}</div>
       <div style="margin-bottom: 8px;">
         <strong>Main:</strong> ${selectedMainTriggerNames.join(', ')}
       </div>
       ${selectedSecondaryTriggerNames.length > 0 ? `<div style="margin-bottom: 8px;"><strong>Secondary:</strong> ${selectedSecondaryTriggerNames.join(', ')}</div>` : ''}
-      <div class="alert-message">${alert.message}</div>
-      ${(alert.sections || []).filter(s => s.name || s.content).length > 0
-        ? `<div style="font-size: 11px; color: var(--text-secondary); margin: 4px 0 8px 0;">📋 ${(alert.sections || []).filter(s => s.name || s.content).length} info section(s)</div>`
-        : ''}
+      ${sectionsNote}
       <div class="item-actions">
         <button class="btn btn-secondary edit-alert" data-alert-id="${alert.id}">Edit</button>
         <button class="btn btn-danger delete-alert" data-alert-id="${alert.id}">Delete</button>

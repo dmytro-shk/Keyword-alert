@@ -506,19 +506,32 @@ function saveSuppressState() {
 
 loadSuppressState();
 
+// Normalize any historical alert format → [s1, s2, s3] strings
+function resolveSectionContents(sections, fallbackMessage) {
+  if (Array.isArray(sections) && sections.length > 0) {
+    if (typeof sections[0] === 'string') {
+      return [sections[0] || fallbackMessage || '', sections[1] || '', sections[2] || ''];
+    }
+    if (sections[0] !== null && typeof sections[0] === 'object') {
+      return [sections[0]?.content || fallbackMessage || '', sections[1]?.content || '', sections[2]?.content || ''];
+    }
+  }
+  return [fallbackMessage || '', '', ''];
+}
+
 // Function to show custom alert dialog
-function showCustomAlert(message, alertId, debugInfo, index, sections) {
+function showCustomAlert(message, alertId, debugInfo, sections) {
   return new Promise((resolve) => {
-    chrome.storage.local.get(['alertStyle'], (result) => {
+    chrome.storage.local.get(['alertStyle', 'sectionNames', 'debugMode'], (result) => {
       const alertStyle = result.alertStyle || 'custom';
+      const sectionNames = result.sectionNames || [];
+      const debugMode = result.debugMode || false;
 
       if (alertStyle === 'native') {
-        // Use native window.alert
         window.alert(message);
         resolve(null);
       } else {
-        // Use custom modal
-        const modal = createAlertModal(message, alertId, debugInfo, index, resolve, sections);
+        const modal = createAlertModal(message, alertId, debugInfo, resolve, sections, sectionNames, debugMode);
         document.body.appendChild(modal);
       }
     });
@@ -526,7 +539,7 @@ function showCustomAlert(message, alertId, debugInfo, index, sections) {
 }
 
 // Function to create custom alert modal
-function createAlertModal(message, alertId, debugInfo, index, resolve, sections) {
+function createAlertModal(message, alertId, debugInfo, resolve, sections, sectionNames, debugMode) {
   const overlay = document.createElement('div');
   overlay.style.cssText = `
     position: fixed;
@@ -566,27 +579,149 @@ function createAlertModal(message, alertId, debugInfo, index, resolve, sections)
   title.style.cssText = `
     font-size: 18px;
     font-weight: 600;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
     color: #1a1a1a;
   `;
   title.textContent = `🚨 Keyword Alert`;
 
-  const content = document.createElement('div');
-  content.style.cssText = `
-    font-size: 14px;
-    line-height: 1.6;
-    color: #333;
-    white-space: pre-wrap;
-    margin-bottom: 20px;
-  `;
-  content.textContent = message;
+  // Resolve sections from any historical format
+  const contents = resolveSectionContents(sections, message);
+  const names = sectionNames || [];
+
+  // Build section cards and collect lines for Copy All
+  const sectionsWrap = document.createElement('div');
+  sectionsWrap.style.cssText = 'margin-bottom: 12px;';
+  const copyAllLines = [];
+
+  contents.forEach((content, i) => {
+    if (!content) return;
+    const name = names[i] || `Section ${i + 1}`;
+    copyAllLines.push(`${name}:\n${content}`);
+
+    const sectionDiv = document.createElement('div');
+    sectionDiv.style.cssText = `
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      background: #f8f9fa;
+    `;
+
+    const nameEl = document.createElement('div');
+    nameEl.style.cssText = `
+      font-size: 11px;
+      font-weight: 600;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    `;
+    nameEl.textContent = name;
+    sectionDiv.appendChild(nameEl);
+
+    const row = document.createElement('div');
+    row.style.cssText = 'display: flex; gap: 8px; align-items: flex-start;';
+
+    const contentEl = document.createElement('div');
+    contentEl.style.cssText = `
+      flex: 1;
+      font-size: 13px;
+      color: #333;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+    `;
+    contentEl.textContent = content;
+    row.appendChild(contentEl);
+
+    const copyBtn = document.createElement('button');
+    copyBtn.textContent = '📋 Copy';
+    copyBtn.style.cssText = `
+      padding: 4px 10px;
+      background: #f0f0f0;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    `;
+    copyBtn.onmouseover = () => copyBtn.style.background = '#e0e0e0';
+    copyBtn.onmouseout = () => copyBtn.style.background = '#f0f0f0';
+    copyBtn.onclick = () => {
+      navigator.clipboard.writeText(content).then(() => {
+        copyBtn.textContent = '✓ Copied!';
+        copyBtn.style.background = '#d4edda';
+        copyBtn.style.borderColor = '#b8dfc4';
+        setTimeout(() => {
+          copyBtn.textContent = '📋 Copy';
+          copyBtn.style.background = '#f0f0f0';
+          copyBtn.style.borderColor = '#ccc';
+        }, 1500);
+      });
+    };
+    row.appendChild(copyBtn);
+
+    sectionDiv.appendChild(row);
+    sectionsWrap.appendChild(sectionDiv);
+  });
+
+  // Debug info (collapsible) — only shown when debug mode is on
+  if (debugMode && debugInfo && debugInfo.length > 0) {
+    const debugDetails = document.createElement('details');
+    debugDetails.style.cssText = `
+      font-size: 11px; color: #666;
+      border: 1px solid #e0d7f0;
+      border-radius: 6px;
+      padding: 6px 8px;
+      background: #f8f0ff;
+      margin-bottom: 12px;
+    `;
+    const summary = document.createElement('summary');
+    summary.style.cursor = 'pointer';
+    summary.textContent = '🐛 Debug Info';
+    const debugContent = document.createElement('div');
+    debugContent.style.cssText = 'margin-top: 6px; line-height: 1.6;';
+    debugContent.textContent = '• ' + debugInfo.map(combo => combo.secondaryTrigger
+      ? `Main: "${combo.mainTrigger}" (${combo.mainKeywords.join(', ')}) + Secondary: "${combo.secondaryTrigger}" (${combo.secondaryKeywords.join(', ')})`
+      : `Main: "${combo.mainTrigger}" (${combo.mainKeywords.join(', ')})`
+    ).join('\n• ');
+    debugDetails.appendChild(summary);
+    debugDetails.appendChild(debugContent);
+    sectionsWrap.appendChild(debugDetails);
+  }
 
   const buttonContainer = document.createElement('div');
-  buttonContainer.style.cssText = `
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  `;
+  buttonContainer.style.cssText = `display: flex; gap: 8px; flex-wrap: wrap;`;
+
+  // Copy All button (only when 2+ sections have content)
+  if (copyAllLines.length >= 2) {
+    const copyAllBtn = document.createElement('button');
+    copyAllBtn.textContent = '📋 Copy All';
+    copyAllBtn.style.cssText = `
+      padding: 10px 16px;
+      background: #28a745;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+    `;
+    copyAllBtn.onmouseover = () => copyAllBtn.style.background = '#1e7e34';
+    copyAllBtn.onmouseout = () => copyAllBtn.style.background = '#28a745';
+    copyAllBtn.onclick = () => {
+      navigator.clipboard.writeText(copyAllLines.join('\n\n')).then(() => {
+        copyAllBtn.textContent = '✓ All Copied!';
+        copyAllBtn.style.background = '#1e7e34';
+        setTimeout(() => {
+          copyAllBtn.textContent = '📋 Copy All';
+          copyAllBtn.style.background = '#28a745';
+        }, 1500);
+      });
+    };
+    buttonContainer.appendChild(copyAllBtn);
+  }
 
   const closeBtn = document.createElement('button');
   closeBtn.textContent = 'OK';
@@ -600,7 +735,6 @@ function createAlertModal(message, alertId, debugInfo, index, resolve, sections)
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
-    transition: background 0.2s;
   `;
   closeBtn.onmouseover = () => closeBtn.style.background = '#0056b3';
   closeBtn.onmouseout = () => closeBtn.style.background = '#007bff';
@@ -609,7 +743,6 @@ function createAlertModal(message, alertId, debugInfo, index, resolve, sections)
     resolve(null);
   };
 
-  // Suppress buttons
   const suppress1 = createSuppressButton('1 min', 1, alertId, overlay, resolve);
   const suppress2 = createSuppressButton('2 min', 2, alertId, overlay, resolve);
   const suppress5 = createSuppressButton('5 min', 5, alertId, overlay, resolve);
@@ -620,90 +753,7 @@ function createAlertModal(message, alertId, debugInfo, index, resolve, sections)
   buttonContainer.appendChild(suppress5);
 
   modal.appendChild(title);
-  modal.appendChild(content);
-
-  // Render info sections with Copy buttons (backward-compatible: old alerts have no sections)
-  const validSections = (sections || []).filter(s => s.name || s.content);
-  if (validSections.length > 0) {
-    const sectionsWrap = document.createElement('div');
-    sectionsWrap.style.cssText = 'margin-bottom: 16px;';
-
-    validSections.forEach(section => {
-      const sectionDiv = document.createElement('div');
-      sectionDiv.style.cssText = `
-        border: 1px solid #e0e0e0;
-        border-radius: 8px;
-        padding: 10px 12px;
-        margin-bottom: 8px;
-        background: #f8f9fa;
-      `;
-
-      if (section.name) {
-        const nameEl = document.createElement('div');
-        nameEl.style.cssText = `
-          font-size: 11px;
-          font-weight: 600;
-          color: #666;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          margin-bottom: 6px;
-        `;
-        nameEl.textContent = section.name;
-        sectionDiv.appendChild(nameEl);
-      }
-
-      const row = document.createElement('div');
-      row.style.cssText = 'display: flex; gap: 8px; align-items: flex-start;';
-
-      const contentEl = document.createElement('div');
-      contentEl.style.cssText = `
-        flex: 1;
-        font-size: 13px;
-        color: #333;
-        line-height: 1.5;
-        white-space: pre-wrap;
-        word-break: break-word;
-      `;
-      contentEl.textContent = section.content || '';
-      row.appendChild(contentEl);
-
-      if (section.content) {
-        const copyBtn = document.createElement('button');
-        copyBtn.textContent = '📋 Copy';
-        copyBtn.style.cssText = `
-          padding: 4px 10px;
-          background: #f0f0f0;
-          border: 1px solid #ccc;
-          border-radius: 4px;
-          font-size: 12px;
-          cursor: pointer;
-          white-space: nowrap;
-          flex-shrink: 0;
-        `;
-        copyBtn.onmouseover = () => copyBtn.style.background = '#e0e0e0';
-        copyBtn.onmouseout = () => copyBtn.style.background = '#f0f0f0';
-        copyBtn.onclick = () => {
-          navigator.clipboard.writeText(section.content).then(() => {
-            copyBtn.textContent = '✓ Copied!';
-            copyBtn.style.background = '#d4edda';
-            copyBtn.style.borderColor = '#b8dfc4';
-            setTimeout(() => {
-              copyBtn.textContent = '📋 Copy';
-              copyBtn.style.background = '#f0f0f0';
-              copyBtn.style.borderColor = '#ccc';
-            }, 1500);
-          });
-        };
-        row.appendChild(copyBtn);
-      }
-
-      sectionDiv.appendChild(row);
-      sectionsWrap.appendChild(sectionDiv);
-    });
-
-    modal.appendChild(sectionsWrap);
-  }
-
+  modal.appendChild(sectionsWrap);
   modal.appendChild(buttonContainer);
   overlay.appendChild(modal);
 
@@ -968,38 +1018,20 @@ function checkPage() {
       DebugLogger.logFinalResults(alerts.length, alertsTriggered, triggeredAlerts);
 
       if (alertsTriggered > 0) {
-        // Check debug mode setting before displaying alerts
-        chrome.storage.local.get(['debugMode'], (result) => {
-          const debugMode = result.debugMode || false;
+        // Show alerts sequentially, deduplicating by section-1 content
+        const shownMessages = new Set();
+        let delay = 0;
+        triggeredAlerts.forEach(alertObj => {
+          const primaryText = resolveSectionContents(alertObj.sections, alertObj.message)[0] || alertObj.message;
+          if (shownMessages.has(primaryText)) return;
+          shownMessages.add(primaryText);
 
-          // Show alerts sequentially, deduplicating by message text
-          const shownMessages = new Set();
-          let delay = 0;
-          triggeredAlerts.forEach((alertObj, index) => {
-            if (shownMessages.has(alertObj.message)) return;
-            shownMessages.add(alertObj.message);
-
-            setTimeout(async () => {
-              DebugLogger.log('ALERT', `Displaying: "${alertObj.message}"`);
-
-              let displayMessage;
-              if (debugMode && alertObj.debugInfo && alertObj.debugInfo.length > 0) {
-                const debugLines = alertObj.debugInfo.map(combo => {
-                  if (combo.secondaryTrigger) {
-                    return `Main: "${combo.mainTrigger}" (${combo.mainKeywords.join(', ')}) + Secondary: "${combo.secondaryTrigger}" (${combo.secondaryKeywords.join(', ')})`;
-                  } else {
-                    return `Main: "${combo.mainTrigger}" (${combo.mainKeywords.join(', ')})`;
-                  }
-                });
-                displayMessage = `${alertObj.message}\n\n🐛 Debug Info:\n• ${debugLines.join('\n• ')}`;
-              } else {
-                displayMessage = alertObj.message;
-              }
-
-              await showCustomAlert(displayMessage, alertObj.id, alertObj.debugInfo, index, alertObj.sections);
-            }, delay);
-            delay += 300;
-          });
+          setTimeout(async () => {
+            DebugLogger.log('ALERT', `Displaying: "${primaryText}"`);
+            // showCustomAlert reads debugMode/sectionNames from storage internally
+            await showCustomAlert(primaryText, alertObj.id, alertObj.debugInfo, alertObj.sections);
+          }, delay);
+          delay += 300;
         });
         alerted = true;
       }

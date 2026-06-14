@@ -634,25 +634,12 @@
         cursor: help;
       }
 
-      /* Alert section blocks (in alert creation form) */
-      .alert-section-block {
-        border: 1px solid var(--border-secondary);
-        border-radius: var(--radius-small);
-        padding: 10px;
-        background: var(--surface);
-        margin-bottom: 8px;
-      }
-
-      .alert-section-block:last-child {
-        margin-bottom: 0;
-      }
-
-      .section-block-label {
-        font-size: 11px;
+      /* Alert section labels in form */
+      .section-form-label {
+        font-size: 13px;
         font-weight: 600;
-        color: var(--text-secondary);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
+        color: var(--text-primary);
+        display: block;
         margin-bottom: 6px;
       }
 
@@ -930,11 +917,37 @@
     <!-- Settings Tab -->
     <div id="settings-content" class="tab-content" style="overflow-y: auto;">
       <div class="settings-section">
+        <div class="settings-section-title">Section Names</div>
+        <p style="font-size: 11px; color: var(--text-secondary); margin: 0 0 10px 0; line-height: 1.4;">
+          Global names used for the 3 info sections across all alerts. Section 1 is also the alert notification text.
+        </p>
+        <div class="setting-row">
+          <div class="setting-label">
+            <div class="setting-name">Section 1</div>
+            <div class="setting-description">Required — alert notification text</div>
+          </div>
+          <input type="text" id="global-section-name-1" class="setting-control" placeholder="e.g., Alert" style="width: 140px;">
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">
+            <div class="setting-name">Section 2</div>
+          </div>
+          <input type="text" id="global-section-name-2" class="setting-control" placeholder="e.g., Access Policy" style="width: 140px;">
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">
+            <div class="setting-name">Section 3</div>
+          </div>
+          <input type="text" id="global-section-name-3" class="setting-control" placeholder="e.g., POC Info" style="width: 140px;">
+        </div>
+      </div>
+
+      <div class="settings-section">
         <div class="settings-section-title">Alert Notification</div>
         <div class="setting-row">
           <div class="setting-label">
             <div class="setting-name">Alert Style</div>
-            <div class="setting-description">Native: browser alert dialog. Custom: styled modal with 1/2/5 min suppress buttons.</div>
+            <div class="setting-description">Native: browser alert dialog. Custom: styled modal with Copy and Suppress buttons.</div>
           </div>
           <select id="alert-style-select" class="setting-control">
             <option value="custom">Custom (with suppress)</option>
@@ -1053,7 +1066,7 @@
           <button class="modal-close">&times;</button>
         </div>
         <div class="modal-body">
-          <div class="section-subtitle">Combine triggers with alert messages to create notifications when conditions are met.</div>
+          <div class="section-subtitle">Select triggers and fill in section content. Section 1 is required and becomes the alert notification text. Section names are configured in Settings.</div>
 
           <div class="form-group">
             <label class="form-label">Main Triggers</label>
@@ -1072,30 +1085,18 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label">Alert Message</label>
-            <textarea id="alert-message" class="form-input" rows="2" placeholder="Enter the message to show when triggers match"></textarea>
+            <label class="form-label section-form-label" id="section-label-1">Section 1 <span style="color: var(--destructive);">*</span></label>
+            <textarea id="section-content-1" class="form-input" rows="2" placeholder="Required — alert notification text..."></textarea>
           </div>
 
           <div class="form-group">
-            <label class="form-label">Info Sections <span style="color: var(--text-secondary); font-weight: 400;">(optional — each shown with a Copy button in the alert)</span></label>
+            <label class="form-label section-form-label" id="section-label-2">Section 2 <span style="color: var(--text-secondary); font-weight: 400;">(optional)</span></label>
+            <textarea id="section-content-2" class="form-input" rows="2" placeholder="Optional..."></textarea>
+          </div>
 
-            <div class="alert-section-block">
-              <div class="section-block-label">Section 1</div>
-              <input type="text" id="section-name-1" class="form-input" placeholder="Name (e.g., Access Policy)" style="margin-bottom: 6px;">
-              <textarea id="section-content-1" class="form-input" rows="2" placeholder="Content to copy..."></textarea>
-            </div>
-
-            <div class="alert-section-block">
-              <div class="section-block-label">Section 2</div>
-              <input type="text" id="section-name-2" class="form-input" placeholder="Name (e.g., PM Policy)" style="margin-bottom: 6px;">
-              <textarea id="section-content-2" class="form-input" rows="2" placeholder="Content to copy..."></textarea>
-            </div>
-
-            <div class="alert-section-block">
-              <div class="section-block-label">Section 3</div>
-              <input type="text" id="section-name-3" class="form-input" placeholder="Name (e.g., POC Info)" style="margin-bottom: 6px;">
-              <textarea id="section-content-3" class="form-input" rows="2" placeholder="Content to copy..."></textarea>
-            </div>
+          <div class="form-group">
+            <label class="form-label section-form-label" id="section-label-3">Section 3 <span style="color: var(--text-secondary); font-weight: 400;">(optional)</span></label>
+            <textarea id="section-content-3" class="form-input" rows="2" placeholder="Optional..."></textarea>
           </div>
 
           <div class="actions">
