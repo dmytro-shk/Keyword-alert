@@ -1092,8 +1092,10 @@ chrome.runtime.onMessage.addListener(msg => {
   if (msg && msg.type === 'retrigger') {
     alerted = false;
     shownAlerts.clear();
+    suppressedAlerts.clear();
+    saveSuppressState(); // wipe persisted suppress so storage matches
     window.settingsLogged = false;
-    console.log('🔄 Manual retrigger from popup');
+    console.log('🔄 Manual retrigger from popup — suppress cleared');
     checkPage();
   }
 });

@@ -1844,7 +1844,10 @@ function loadAlertStyleSetting() {
   chrome.storage.local.get(['alertStyle'], (result) => {
     const alertStyle = result.alertStyle || 'custom';
     alertStyleSelect.value = alertStyle;
-    console.log('Alert style setting loaded:', alertStyle);
+    // Persist the default so content.js always finds it in storage
+    if (!result.alertStyle) {
+      chrome.storage.local.set({ alertStyle: 'custom' });
+    }
   });
 }
 
