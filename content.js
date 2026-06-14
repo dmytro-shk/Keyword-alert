@@ -639,6 +639,7 @@ function createAlertModal(message, alertId, debugInfo, resolve, sections, sectio
     copyBtn.style.cssText = `
       padding: 4px 10px;
       background: #f0f0f0;
+      color: #000;
       border: 1px solid #ccc;
       border-radius: 4px;
       font-size: 12px;
@@ -694,7 +695,42 @@ function createAlertModal(message, alertId, debugInfo, resolve, sections, sectio
   const buttonContainer = document.createElement('div');
   buttonContainer.style.cssText = `display: flex; gap: 8px; flex-wrap: wrap;`;
 
-  // Copy All button (only when 2+ sections have content)
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = 'OK';
+  closeBtn.style.cssText = `
+    flex: 1;
+    padding: 10px 16px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+  `;
+  closeBtn.onmouseover = () => closeBtn.style.background = '#0056b3';
+  closeBtn.onmouseout = () => closeBtn.style.background = '#007bff';
+
+  const dismissModal = () => {
+    document.removeEventListener('keydown', onKeyDown);
+    document.body.removeChild(overlay);
+    resolve(null);
+  };
+
+  const onKeyDown = (e) => {
+    if (e.key === 'Escape') dismissModal();
+  };
+  document.addEventListener('keydown', onKeyDown);
+
+  closeBtn.onclick = dismissModal;
+
+  const suppress1 = createSuppressButton('1 min', 1, alertId, overlay, resolve, () => {
+    document.removeEventListener('keydown', onKeyDown);
+  });
+
+  // Button order: Suppress → Copy All → OK
+  buttonContainer.appendChild(suppress1);
+
   if (copyAllLines.length >= 2) {
     const copyAllBtn = document.createElement('button');
     copyAllBtn.textContent = '📋 Copy All';
@@ -723,40 +759,7 @@ function createAlertModal(message, alertId, debugInfo, resolve, sections, sectio
     buttonContainer.appendChild(copyAllBtn);
   }
 
-  const closeBtn = document.createElement('button');
-  closeBtn.textContent = 'OK';
-  closeBtn.style.cssText = `
-    flex: 1;
-    padding: 10px 16px;
-    background: #007bff;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-  `;
-  closeBtn.onmouseover = () => closeBtn.style.background = '#0056b3';
-  closeBtn.onmouseout = () => closeBtn.style.background = '#007bff';
-  const dismissModal = () => {
-    document.removeEventListener('keydown', onKeyDown);
-    document.body.removeChild(overlay);
-    resolve(null);
-  };
-
-  const onKeyDown = (e) => {
-    if (e.key === 'Escape') dismissModal();
-  };
-  document.addEventListener('keydown', onKeyDown);
-
-  closeBtn.onclick = dismissModal;
-
-  const suppress1 = createSuppressButton('1 min', 1, alertId, overlay, resolve, () => {
-    document.removeEventListener('keydown', onKeyDown);
-  });
-
   buttonContainer.appendChild(closeBtn);
-  buttonContainer.appendChild(suppress1);
 
   modal.appendChild(title);
   modal.appendChild(sectionsWrap);
