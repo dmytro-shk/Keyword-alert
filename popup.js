@@ -81,7 +81,7 @@ function init() {
   setupTabs();
   setupEventHandlers();
   loadAllData();
-
+  setupTour();
 }
 
 function hasUnsavedChanges() {
@@ -1919,6 +1919,181 @@ function saveShowTriggerNamesSetting() {
 function loadShowTriggerNamesSetting() {
   chrome.storage.local.get(['showTriggerNames'], (result) => {
     showTriggerNamesSelect.value = result.showTriggerNames || 'none';
+  });
+}
+
+// ===== PRODUCT TOUR =====
+
+const TOUR_STEPS = [
+  {
+    target: null,
+    title: '👋 Welcome to Keyword Alert!',
+    text: 'This quick tour shows you the key parts of the interface. Takes about 30 seconds.',
+    position: 'center'
+  },
+  {
+    target: '[data-tab="main-triggers"]',
+    title: '⚡ Main Triggers',
+    text: 'Start here. Create triggers with keywords that identify a specific type of page — e.g. "New work order".',
+    position: 'below'
+  },
+  {
+    target: '[data-tab="secondary-triggers"]',
+    title: '🎯 Secondary Triggers',
+    text: 'Optional filters that narrow down alerts to specific accounts or locations — e.g. "Selected Walmarts".',
+    position: 'below'
+  },
+  {
+    target: '[data-tab="alerts"]',
+    title: '🔔 Alerts',
+    text: 'Combine triggers here and add the info you need — contact details, access notes, dispatch instructions.',
+    position: 'below'
+  },
+  {
+    target: '[data-tab="settings"]',
+    title: '⚙️ Settings',
+    text: 'Name your 3 info sections globally and choose how alerts look when they fire.',
+    position: 'below'
+  },
+  {
+    target: '#retrigger-btn',
+    title: '🔄 Retrigger',
+    text: 'Already dismissed an alert? Click this to re-check the current page without reloading.',
+    position: 'below'
+  },
+  {
+    target: null,
+    title: '✅ You\'re all set!',
+    text: 'The flow: create a Main Trigger → Secondary Trigger → Alert. When a page matches, your info pops up ready to copy.',
+    position: 'center',
+    isLast: true
+  }
+];
+
+let tourCurrentStep = 0;
+let tourPrevHighlight = null;
+
+function startTour() {
+  tourCurrentStep = 0;
+  showTourStep(0);
+}
+
+function endTour(completed = false) {
+  clearTourHighlight();
+  document.getElementById('tour-tooltip').style.display = 'none';
+  if (completed) {
+    chrome.storage.local.set({ tourCompleted: true });
+  }
+}
+
+function clearTourHighlight() {
+  if (tourPrevHighlight) {
+    tourPrevHighlight.classList.remove('tour-target-highlight');
+    tourPrevHighlight = null;
+  }
+}
+
+function showTourStep(index) {
+  const step = TOUR_STEPS[index];
+  const tooltip = document.getElementById('tour-tooltip');
+  const total = TOUR_STEPS.length;
+
+  // Update text content
+  document.getElementById('tour-badge').textContent = `Step ${index + 1} of ${total}`;
+  document.getElementById('tour-title').textContent = step.title;
+  document.getElementById('tour-text').textContent = step.text;
+
+  // Progress dots
+  const dotsEl = document.getElementById('tour-dots');
+  dotsEl.innerHTML = '';
+  TOUR_STEPS.forEach((_, i) => {
+    const dot = document.createElement('div');
+    dot.className = 'tour-dot' + (i === index ? ' active' : '');
+    dotsEl.appendChild(dot);
+  });
+
+  // Back button visibility
+  document.getElementById('tour-back').style.display = index === 0 ? 'none' : '';
+  document.getElementById('tour-next').textContent = step.isLast ? 'Done ✓' : 'Next →';
+
+  // Clear previous highlight
+  clearTourHighlight();
+
+  // Highlight target and position tooltip
+  tooltip.style.display = 'block';
+
+  if (step.target) {
+    const targetEl = document.querySelector(step.target);
+    if (targetEl) {
+      targetEl.classList.add('tour-target-highlight');
+      tourPrevHighlight = targetEl;
+      positionTooltipNear(tooltip, targetEl, step.position);
+    }
+  } else {
+    positionTooltipCenter(tooltip);
+  }
+}
+
+function positionTooltipNear(tooltip, target, position) {
+  const tr = target.getBoundingClientRect();
+  const tw = 270; // tooltip width
+  const th = 180; // approx tooltip height
+  const margin = 10;
+  const bodyW = document.body.offsetWidth;
+  const bodyH = document.body.offsetHeight;
+
+  let top, left;
+
+  if (position === 'below') {
+    top = tr.bottom + margin;
+    left = tr.left + tr.width / 2 - tw / 2;
+  } else {
+    top = tr.top - th - margin;
+    left = tr.left + tr.width / 2 - tw / 2;
+  }
+
+  // Clamp within body
+  left = Math.max(8, Math.min(left, bodyW - tw - 8));
+  top  = Math.max(8, Math.min(top,  bodyH - th - 8));
+
+  tooltip.style.left = left + 'px';
+  tooltip.style.top  = top + 'px';
+}
+
+function positionTooltipCenter(tooltip) {
+  const tw = 270;
+  const bodyW = document.body.offsetWidth;
+  const bodyH = document.body.offsetHeight;
+  tooltip.style.left = (bodyW / 2 - tw / 2) + 'px';
+  tooltip.style.top  = (bodyH / 2 - 100) + 'px';
+}
+
+function setupTour() {
+  document.getElementById('tour-next').addEventListener('click', () => {
+    if (tourCurrentStep >= TOUR_STEPS.length - 1) {
+      endTour(true);
+    } else {
+      tourCurrentStep++;
+      showTourStep(tourCurrentStep);
+    }
+  });
+
+  document.getElementById('tour-back').addEventListener('click', () => {
+    if (tourCurrentStep > 0) {
+      tourCurrentStep--;
+      showTourStep(tourCurrentStep);
+    }
+  });
+
+  document.getElementById('tour-skip').addEventListener('click', () => endTour(true));
+
+  document.getElementById('start-tour-btn').addEventListener('click', startTour);
+
+  // Auto-show on first install
+  chrome.storage.local.get(['tourCompleted'], (result) => {
+    if (!result.tourCompleted) {
+      setTimeout(startTour, 400);
+    }
   });
 }
 
