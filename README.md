@@ -49,4 +49,4 @@ Now, whenever you're creating a ticket for ABC Company, you'll automatically get
 
 ---
 
-**Version 1.1.1** | Perfect for dispatchers, support teams, sales, and anyone managing multiple accounts or complex workflows.
+**Version 1.1.2** | Perfect for dispatchers, support teams, sales, and anyone managing multiple accounts or complex workflows.
