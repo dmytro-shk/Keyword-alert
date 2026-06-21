@@ -1,0 +1,97 @@
+{
+  "version": "1.1.0",
+  "exportDate": "2026-06-21T10:13:00.081Z",
+  "exportSource": "Keyword Alert Extension",
+  "mergeable": true,
+  "credits": {
+    "icon": "Siren icon from Flaticon",
+    "iconUrl": "https://www.flaticon.com/free-icon/siren_18468278"
+  },
+  "stats": {
+    "mainTriggers": 1,
+    "secondaryTriggers": 1,
+    "alerts": 1,
+    "totalItems": 3
+  },
+  "settings": {
+    "sectionNames": [
+      "*** Important ***",
+      "*** For Dispatch ***",
+      "*** For Tech ***"
+    ],
+    "alertStyle": "custom",
+    "showTriggerNames": "secondary",
+    "debugMode": false
+  },
+  "data": {
+    "mainTriggers": [
+      {
+        "id": 1782036396046,
+        "keywords": [
+          {
+            "keyword": "All",
+            "operator": "AND"
+          },
+          {
+            "keyword": "AI mode",
+            "operator": "AND"
+          },
+          {
+            "keyword": "Shopping"
+          }
+        ],
+        "name": "Search results",
+        "type": "main"
+      }
+    ],
+    "secondaryTriggers": [
+      {
+        "id": 1782036418780,
+        "keywords": [
+          {
+            "keyword": "Walmart",
+            "operator": "AND"
+          },
+          {
+            "keyword": "Seattle",
+            "operator": "OR"
+          },
+          {
+            "keyword": "Renton",
+            "operator": "OR"
+          },
+          {
+            "keyword": "Lynnwood",
+            "operator": "OR"
+          },
+          {
+            "keyword": "Everett",
+            "operator": "OR"
+          },
+          {
+            "keyword": "Tukwila"
+          }
+        ],
+        "name": "Walmart Seattle Greater Area",
+        "type": "secondary"
+      }
+    ],
+    "alerts": [
+      {
+        "id": 1782036621496,
+        "mainTriggers": [
+          1782036396046
+        ],
+        "message": "Custom preventative maintenance policy. Read the PM memo.",
+        "secondaryTriggers": [
+          1782036418780
+        ],
+        "sections": [
+          "Custom preventative maintenance policy. Read the PM memo.",
+          "Attach the PM memo for the technician. First two iterations are free; July - December are billable.",
+          "Please keep track of filters, parts, and labor."
+        ]
+      }
+    ]
+  }
+}
