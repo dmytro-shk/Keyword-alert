@@ -1,6 +1,6 @@
 {
   "version": "1.1.0",
-  "exportDate": "2026-06-21T10:13:00.081Z",
+  "exportDate": "2026-06-21T10:18:15.905Z",
   "exportSource": "Keyword Alert Extension",
   "mergeable": true,
   "credits": {
@@ -53,26 +53,10 @@
             "operator": "AND"
           },
           {
-            "keyword": "Seattle",
-            "operator": "OR"
-          },
-          {
-            "keyword": "Renton",
-            "operator": "OR"
-          },
-          {
-            "keyword": "Lynnwood",
-            "operator": "OR"
-          },
-          {
-            "keyword": "Everett",
-            "operator": "OR"
-          },
-          {
-            "keyword": "Tukwila"
+            "keyword": "Seattle"
           }
         ],
-        "name": "Walmart Seattle Greater Area",
+        "name": "Walmart Seattle",
         "type": "secondary"
       }
     ],
